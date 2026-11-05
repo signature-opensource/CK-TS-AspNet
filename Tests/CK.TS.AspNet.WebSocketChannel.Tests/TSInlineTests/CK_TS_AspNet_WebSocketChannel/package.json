@@ -1,0 +1,20 @@
+{
+  "name": "ck_aspnet_websocketchannel",
+  "private": true,
+  "packageManager": "yarn@4.8.1",
+  "scripts": {
+    "ck-watch": "dotnet \"$PROJECT_CWD/../../bin/Debug/net8.0/CK.TypeScript.LiveEngine.dll\"",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@yarnpkg/sdks": "^3.3.1",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "jest-util": "^30.4.1",
+    "ts-jest": "^29.4.12",
+    "typescript": "=5.4.5"
+  },
+  "ckVersion": 1
+}

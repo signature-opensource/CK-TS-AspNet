@@ -1,2 +1,9 @@
 <Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CK.TS.AspNet.Clients.Tests/CK.TS.AspNet.Clients.Tests.csproj" />
+    <Project Path="Tests/CK.TS.AspNet.WebSocketChannel.Tests/CK.TS.AspNet.WebSocketChannel.Tests.csproj" />
+  </Folder>
+  <Project Path="CK.TS.AspNet.Auth/CK.TS.AspNet.Auth.csproj" />
+  <Project Path="CK.TS.AspNet.Clients/CK.TS.AspNet.Clients.csproj" />
+  <Project Path="CK.TS.AspNet.WebSocketChannel/CK.TS.AspNet.WebSocketChannel.csproj" />
 </Solution>

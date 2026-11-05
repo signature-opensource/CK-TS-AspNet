@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Same convention as CK.TS.AspNet.Auth: the assembly is CK.TS.*, the namespace stays the one of
+         the server package, so consumers' using and [Requires<>] do not change. -->
+    <RootNamespace>CK.AspNet.WebSocketChannel</RootNamespace>
+    <Description>TypeScript client of the application-wide WebSocket channel: WSConnection opens the one socket, keeps its connection identifier, reconnects, and routes each frame to the handler registered for its topic. Needs nothing from the server package.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.TypeScript" Version="3.0.0" />
+  </ItemGroup>
+</Project>

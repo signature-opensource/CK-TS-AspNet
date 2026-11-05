@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Serves the client applications of an ASP.NET host (its TypeScript configurations that are client applications) under the host's origin: their built files in production, their dev server in development.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The dev server of a client application is reached through the host by YARP direct forwarding. -->
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+    <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
+    <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.0.ci.35" />
+    <!-- The running status of a development party (IDevRunningStatusContributor). -->
+    <PackageReference Include="CK.AppIdentity.Abstractions" Version="3.0.0-0.cris-auth.0.ci.28" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.TypeScript" Version="3.0.0" />
+  </ItemGroup>
+</Project>
