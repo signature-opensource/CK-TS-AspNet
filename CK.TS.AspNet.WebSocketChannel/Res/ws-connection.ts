@@ -134,8 +134,8 @@ export class WSConnection {
 
   /**
    * Resolves with the connection identifier: immediately if a connection is established, on the next
-   * one otherwise. Does not open the connection - {@link start} does, and the application initializer
-   * of this package calls it before anything else is initialized.
+   * one otherwise. Does not open the connection - {@link start} does, and it must have been
+   * called by the application (for Angular, the application initializer of CK.Ng.AspNet.WebSocketChannel calls it).
    */
   whenConnectedAsync(): Promise<string> {
     if ( this.#connectionId !== undefined ) return Promise.resolve( this.#connectionId );
