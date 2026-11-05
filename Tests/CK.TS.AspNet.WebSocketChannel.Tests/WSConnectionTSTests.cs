@@ -19,7 +19,7 @@ namespace CK.TS.AspNet.WebSocketChannel.Tests;
 public class WSConnectionTSTests
 {
     [Test]
-    public async Task CK_AspNet_WebSocketChannel_Async()
+    public async Task CK_TS_AspNet_WebSocketChannel_Async()
     {
         var targetProjectPath = TestHelper.GetTypeScriptInlineTargetProjectPath();
 
