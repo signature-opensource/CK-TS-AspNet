@@ -7,7 +7,7 @@ it from the host's TypeScript configurations, without any per-application code i
 ## The client applications come from the configuration
 
 A `<TypeScript>` configuration with a `Kind` is a client application (see
-[CK.TypeScript](../CK.TypeScript/README.md#client-applications)):
+[CK.TypeScript](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript/README.md#client-applications)):
 
 ```xml
 <TypeScript Name="App" Kind="DefaultApp" DevServerPort="4200" />
@@ -74,7 +74,7 @@ Center) target them (`PartyDescription.GetClientApplicationUrl`).
 
 ## Requires.
 
-- [CK.TypeScript](../CK.TypeScript/README.md) for the `ClientDirectory`.
+- [CK.TypeScript](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript/README.md) for the `ClientDirectory`.
 - [CK.AspNet](https://github.com/signature-opensource/CK-AspNet/blob/stable/CK.AspNet/README.md#the-enable-convention-and-the-contributions-of-the-packages)
   for the "Enable" convention and the contributions.
 - [Yarp.ReverseProxy](https://github.com/dotnet/yarp) for the forwarding to the dev servers.
