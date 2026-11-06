@@ -10,11 +10,11 @@
     <!-- The dev server of a client application is reached through the host by YARP direct forwarding. -->
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
-    <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.0.ci.36" />
+    <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.0.ci.37" />
     <!-- The running status of a development party (IDevRunningStatusContributor). -->
-    <PackageReference Include="CK.AppIdentity.Abstractions" Version="3.0.0-0.cris-auth.0.ci.29" />
+    <PackageReference Include="CK.AppIdentity.Abstractions" Version="3.0.0-0.cris-auth.0.ci.31" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.0.ci.74" />
+    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.0.ci.82" />
   </ItemGroup>
 </Project>
