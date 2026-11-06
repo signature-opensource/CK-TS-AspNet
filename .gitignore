@@ -21,3 +21,6 @@ Tests/**/CKSetup-WorkingDir/
 # Because we can have subordinated .yarn folder we must exclude any .yarn/install-state.gz.
 **/.yarn/install-state.gz
 **/.yarn/unplugged
+
+# The install marker of the CK.TypeScript engine (it describes the local install).
+**/.yarn/ck-install-state
