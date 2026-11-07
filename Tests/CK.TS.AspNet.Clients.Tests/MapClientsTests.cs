@@ -35,6 +35,8 @@ public class MapClientsTests
     {
         var configuration = TestHelper.CreateDefaultEngineConfiguration();
         // A party: the "HttpEndpoint" feature serves the client applications on its endpoint (the contribution of ClientsHosting).
+        // Its assembly is in the bin folder of the tests.
+        configuration.FirstBinPath.Path = TestHelper.BinFolder;
         configuration.FirstBinPath.Assemblies.Add( AspNetServerTestHelperExtensions.HttpEndpointAssembly );
         configuration.FirstBinPath.Types.Add( typeof( ClientDirectory ),
                                               typeof( ClientsHosting ),
