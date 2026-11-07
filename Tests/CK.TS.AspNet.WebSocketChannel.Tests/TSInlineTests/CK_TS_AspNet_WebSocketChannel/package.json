@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "yarn@4.18.1",
   "scripts": {
-    "ck-watch": "dotnet \"$PROJECT_CWD/../../bin/Release/net10.0/CK.TypeScript.LiveEngine.dll\"",
+    "ck-watch": "dotnet \"$PROJECT_CWD/../../bin/Debug/net10.0/CK.TypeScript.LiveEngine.dll\"",
     "test": "jest"
   },
   "devDependencies": {
@@ -16,5 +16,6 @@
     "ts-jest": "^29.4.12",
     "typescript": "=5.4.5"
   },
-  "ckVersion": 1
+  "ckVersion": 1,
+  "dependencies": {}
 }
