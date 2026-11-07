@@ -34,6 +34,8 @@ public class MapClientsTests
     static async Task<IStObjMap> CreateMapAsync( NormalizedPath root, int appPort, int miniAppPort, bool miniAppUseDist = false )
     {
         var configuration = TestHelper.CreateDefaultEngineConfiguration();
+        // A party: the "HttpEndpoint" feature serves the client applications on its endpoint (the contribution of ClientsHosting).
+        configuration.FirstBinPath.Assemblies.Add( AspNetServerTestHelperExtensions.HttpEndpointAssembly );
         configuration.FirstBinPath.Types.Add( typeof( ClientDirectory ),
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
@@ -73,16 +75,15 @@ public class MapClientsTests
 
     static int Port( WebApplication app ) => new Uri( app.Urls.First() ).Port;
 
-    // The client projects are under the content root (the test project folder): their ProjectPath is relative.
+    // A party: the contribution of ClientsHosting serves the client applications on its endpoint. The client projects are
+    // under the content root (the test project folder): their ProjectPath is relative.
     static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, params (string Key, string Value)[] configuration )
     {
-        var builder = WebApplication.CreateSlimBuilder( new WebApplicationOptions
+        return map.CreateRunningAspNetServerAsync( configureHost: b =>
         {
-            ContentRootPath = TestHelper.TestProjectFolder,
-            EnvironmentName = environment
+            b.Environment.EnvironmentName = environment;
+            b.Configuration.AddInMemoryCollection( configuration.Select( c => new KeyValuePair<string, string?>( c.Key, c.Value ) ) );
         } );
-        builder.Configuration.AddInMemoryCollection( configuration.Select( c => new KeyValuePair<string, string?>( c.Key, c.Value ) ) );
-        return builder.CreateRunningAspNetServerAsync( map, app => app.MapClients() );
     }
 
     static async Task<string> GetAsync( RunningAspNetServer server, string path ) => await (await server.Client.GetAsync( path )).Content.ReadAsStringAsync();
@@ -108,17 +109,9 @@ public class MapClientsTests
     public async Task the_contribution_of_ClientsHosting_serves_the_client_applications_once_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
-        var builder = WebApplication.CreateSlimBuilder( new WebApplicationOptions
-        {
-            ContentRootPath = TestHelper.TestProjectFolder,
-            EnvironmentName = "Production"
-        } );
-        // The map registers the contribution of ClientsHosting: the host applies it (as the "HttpEndpoint" feature does).
-        builder.Services.AddStObjMap( TestHelper.Monitor, map );
-        WebApplicationContributions.FindOrAdd( builder.Services ).ApplyTo( builder );
-        // The application enables it too: the client applications are mapped once (twice would be ambiguous routes).
-        builder.EnableClients();
-        await using var server = await builder.CreateRunningAspNetServerAsync();
+        // The map registers the contribution of ClientsHosting, the "HttpEndpoint" feature applies it. The application
+        // enables it too: the client applications are mapped once (twice would be ambiguous routes).
+        await using var server = await map.CreateRunningAspNetServerAsync( configureEndpoint: web => web.EnableClients() );
 
         (await GetAsync( server, "/some/route" )).ShouldBe( "THE-APP" );
         (await GetAsync( server, "/mini-app/some/route" )).ShouldBe( "THE-MINI-APP" );

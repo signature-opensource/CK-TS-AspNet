@@ -18,13 +18,13 @@ The engine generates the `ClientDirectory` of the host from them: each `ClientIn
 (`/` for the default one, `/mini-app` here), its `ProjectPath` (`Clients/MiniApp`, relative to the host's project), its
 `OutputPath` (`dist/MiniApp/browser`), its `TypeFilterName`, its `DevServerPort` and its `UseDist`.
 
-## One call serves them
+## No call serves them
 
-```csharp
-var app = builder.CKBuild( map );
-app.UseCris();
-app.MapClients();
-```
+The real object `ClientsHosting` contributes `ClientsApplicationExtensions.EnableClients` to the web applications of
+the host (`WebApplicationContributions`, the "Enable" convention of CK.AspNet: it is idempotent): the "HttpEndpoint"
+feature of CK.AppIdentity.HttpEndpoint applies it to each of its endpoints, so a party serves its client applications
+without calling anything. `EnableClients` appends `MapClients` to the pipeline; `ClientsHosting` also registers
+the HTTP forwarder (the host doesn't call `AddHttpForwarder()`).
 
 `ClientsApplicationExtensions.MapClients` serves each client application under its request path, the default one last:
 
@@ -42,15 +42,6 @@ In Development, a client application whose `UseDist` is true uses its built file
 its default (a client application nobody develops in this host), the host's configuration overrides it for a run:
 `Clients:UseDist=true` for all the client applications (a UI test, a backend-only debugging session),
 `Clients:{Name}:UseDist=true|false` for one of them (`dotnet run -- --Clients:MiniApp:UseDist=false`).
-
-The real object `ClientsHosting` registers the HTTP forwarder: the host doesn't call `AddHttpForwarder()`.
-
-## Or no call at all
-
-`ClientsApplicationExtensions.EnableClients` is the same in one gesture on the `WebApplicationBuilder` (the "Enable"
-convention of CK.AspNet: it is idempotent). `ClientsHosting` contributes it to the web applications of the host
-(`WebApplicationContributions`): a host that applies the contributions, like the "HttpEndpoint" feature of
-CK.AppIdentity.HttpEndpoint, serves the client applications without calling anything.
 
 ## The running status of a development party
 
