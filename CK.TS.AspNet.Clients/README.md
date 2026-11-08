@@ -77,7 +77,8 @@ this client application.
 
 ## The client applications in the description of the party
 
-A `TypeScriptClient` is described by its `Name` and its `RequestPath`: the "PartyClient" feature adds the declared
+A `TypeScriptClient` is described by its `Name`, its `RequestPath` and its facts (`ClientInfo.Facts`: the
+`[PartyClientFact]` of its selected TypeScript packages): the "PartyClient" feature adds the declared
 client applications to the description of the party (its `IParty.Description`, see the "PartyDescription" feature of
 [CK.AppIdentity](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity/README.md#the-description-of-a-party)):
 the party announces them to its remotes, and the links that a remote builds for it (the mails of an Authentication

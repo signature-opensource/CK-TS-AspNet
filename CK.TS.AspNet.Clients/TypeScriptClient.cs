@@ -22,7 +22,7 @@ public sealed class TypeScriptClient : PartyClient
     public ClientInfo Info { get; }
 
     /// <summary>
-    /// Gets the description of this client application: its name and its request path.
+    /// Gets the description of this client application: its name, its request path and its facts (see <see cref="ClientInfo.Facts"/>).
     /// </summary>
-    public override ClientApplicationDescription Description => new ClientApplicationDescription( Name, Info.RequestPath );
+    public override ClientApplicationDescription Description => new ClientApplicationDescription( Name, Info.RequestPath, Info.Facts );
 }
