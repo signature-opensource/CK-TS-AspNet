@@ -11,8 +11,9 @@
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
     <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.1.ci.43" />
-    <!-- The running status of a development party (IDevRunningStatusContributor). -->
-    <PackageReference Include="CK.AppIdentity.Abstractions" Version="3.0.0-0.cris-auth.1.ci.35" />
+    <!-- The client applications are clients of a party ("Client" feature); they require its "HttpEndpoint" feature. -->
+    <PackageReference Include="CK.AppIdentity.Client" Version="3.0.0-0.cris-auth.1.ci.35" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="24.0.0-0.cris-auth.1.ci.43" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.86" />

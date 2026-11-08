@@ -1,3 +1,4 @@
+using CK.AppIdentity;
 using CK.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System.IO;
+using System.Linq;
 
 namespace CK.TypeScript;
 
@@ -62,8 +64,16 @@ public static class ClientsApplicationExtensions
         var isDevelopment = app.Environment.IsDevelopment();
         // The running status of a development party (when the DevRunningStatus feature of CK.AppIdentity is here).
         var status = app.Services.GetService<ClientsDevRunningStatusContributor>();
+        // The client applications of the root party: the ones it declares ("Local:Client:{Name}", the "Client" feature).
+        // The ClientDirectory keeps the order of the build (the default client application last).
+        var declared = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<ClientFeature>()?.Clients
+                                   .OfType<TypeScriptClient>()
+                                   .Select( c => c.Name )
+                                   .ToHashSet()
+                       ?? [];
         foreach( var client in app.Services.GetRequiredService<ClientDirectory>().Clients )
         {
+            if( !declared.Contains( client.Name ) ) continue;
             // The default client application ("/") has an empty path prefix.
             var requestPath = client.RequestPath.TrimEnd( '/' );
             var projectPath = Path.Combine( app.Environment.ContentRootPath, client.ProjectPath );

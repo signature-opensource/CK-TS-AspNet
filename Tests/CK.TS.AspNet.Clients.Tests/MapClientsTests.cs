@@ -1,3 +1,4 @@
+using CK.AppIdentity;
 using CK.AspNet;
 using CK.Core;
 using CK.Setup;
@@ -41,7 +42,9 @@ public class MapClientsTests
         configuration.FirstBinPath.Types.Add( typeof( ClientDirectory ),
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
-                                              typeof( ClientsPartyDescriptionContributor ) );
+                                              typeof( TypeScriptClientFactory ),
+                                              typeof( ClientFeatureDriver ),
+                                              typeof( PartyClientDescriptionContributor ) );
         configuration.EnsureAspect<TypeScriptAspectConfiguration>();
         var app = configuration.FirstBinPath.EnsureAspect<TypeScriptBinPathAspectConfiguration>();
         app.Name = "App";
@@ -79,9 +82,20 @@ public class MapClientsTests
 
     // A party: the contribution of ClientsHosting serves the client applications on its endpoint. The client projects are
     // under the content root (the test project folder): their ProjectPath is relative.
+    // The root party declares its client applications ("Local:Client:{Name}"): both by default.
+    static void Declare( MutableConfigurationSection identity, params string[] clients )
+    {
+        foreach( var c in clients ) identity[$"Local:Client:{c}"] = "";
+    }
+
     static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, params (string Key, string Value)[] configuration )
     {
-        return map.CreateRunningAspNetServerAsync( configureHost: b =>
+        return CreateHostAsync( map, environment, ["App", "MiniApp"], configuration );
+    }
+
+    static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, string[] declared, params (string Key, string Value)[] configuration )
+    {
+        return map.CreateRunningAspNetServerAsync( identity: c => Declare( c, declared ), configureHost: b =>
         {
             b.Environment.EnvironmentName = environment;
             b.Configuration.AddInMemoryCollection( configuration.Select( c => new KeyValuePair<string, string?>( c.Key, c.Value ) ) );
@@ -108,12 +122,35 @@ public class MapClientsTests
     }
 
     [Test]
+    public async Task a_client_application_that_the_party_doesnt_declare_is_not_served_nor_announced_Async()
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await using var server = await CreateHostAsync( map, "Production", ["MiniApp"] );
+
+        (await GetAsync( server, "/mini-app/" )).ShouldBe( "THE-MINI-APP" );
+        // The App is built but not declared: "/" is not served.
+        (await server.Client.GetAsync( "/" )).StatusCode.ShouldBe( System.Net.HttpStatusCode.NotFound );
+
+        var root = server.Services.GetRequiredService<IApplicationIdentityService>();
+        root.GetRequiredFeature<ClientFeature>().Clients.Single().ShouldBeOfType<TypeScriptClient>().Name.ShouldBe( "MiniApp" );
+        root.Description.ClientApplications.ShouldBe( [new ClientApplicationDescription( "MiniApp", "/mini-app" )] );
+    }
+
+    [Test]
+    public async Task a_declared_client_application_has_no_configurable_fact_Async()
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c["Local:Client:App:Color"] = "Blue" ) );
+    }
+
+    [Test]
     public async Task the_contribution_of_ClientsHosting_serves_the_client_applications_once_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         // The map registers the contribution of ClientsHosting, the "HttpEndpoint" feature applies it. The application
         // enables it too: the client applications are mapped once (twice would be ambiguous routes).
-        await using var server = await map.CreateRunningAspNetServerAsync( configureEndpoint: web => web.EnableClients() );
+        await using var server = await map.CreateRunningAspNetServerAsync( identity: c => Declare( c, "App", "MiniApp" ),
+                                                                           configureEndpoint: web => web.EnableClients() );
 
         (await GetAsync( server, "/some/route" )).ShouldBe( "THE-APP" );
         (await GetAsync( server, "/mini-app/some/route" )).ShouldBe( "THE-MINI-APP" );
@@ -271,7 +308,8 @@ public class MapClientsTests
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await CreateHostAsync( map, "Production" );
         var builder = new CK.AppIdentity.PartyDescription.Builder { PublicUrl = new Uri( "https://acme.example.com" ) };
-        server.Services.GetRequiredService<ClientsPartyDescriptionContributor>().Contribute( builder );
+        // The "Client" feature contributes the declared client applications of the root party.
+        server.Services.GetRequiredService<PartyClientDescriptionContributor>().Contribute( builder );
         var description = builder.Build();
         description.ClientApplications.Select( a => a.Name ).ShouldBe( ["App", "MiniApp"], ignoreOrder: true );
         // The links of the other parties derive from them.
