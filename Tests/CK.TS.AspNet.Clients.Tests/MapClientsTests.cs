@@ -43,8 +43,7 @@ public class MapClientsTests
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
                                               typeof( TypeScriptClientFactory ),
-                                              typeof( ClientFeatureDriver ),
-                                              typeof( PartyClientDescriptionContributor ) );
+                                              typeof( ClientFeatureDriver ) );
         configuration.EnsureAspect<TypeScriptAspectConfiguration>();
         var app = configuration.FirstBinPath.EnsureAspect<TypeScriptBinPathAspectConfiguration>();
         app.Name = "App";
@@ -307,11 +306,10 @@ public class MapClientsTests
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await CreateHostAsync( map, "Production" );
-        var builder = new CK.AppIdentity.PartyDescription.Builder { PublicUrl = new Uri( "https://acme.example.com" ) };
         // The "Client" feature contributes the declared client applications of the root party.
-        server.Services.GetRequiredService<PartyClientDescriptionContributor>().Contribute( builder );
-        var description = builder.Build();
-        description.ClientApplications.Select( a => a.Name ).ShouldBe( ["App", "MiniApp"], ignoreOrder: true );
+        var apps = server.Services.GetRequiredService<ApplicationIdentityService>().Description.ClientApplications;
+        apps.Select( a => a.Name ).ShouldBe( ["App", "MiniApp"], ignoreOrder: true );
+        var description = new CK.AppIdentity.PartyDescription( new Uri( "https://acme.example.com" ), apps );
         // The links of the other parties derive from them.
         description.GetClientApplicationUrl().ShouldBe( "https://acme.example.com" );
         description.GetClientApplicationUrl( "MiniApp" ).ShouldBe( "https://acme.example.com/mini-app" );
