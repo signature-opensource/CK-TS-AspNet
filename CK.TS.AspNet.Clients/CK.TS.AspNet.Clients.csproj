@@ -16,6 +16,6 @@
     <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="24.0.0-0.cris-auth.1.ci.51" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.92" />
+    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.93" />
   </ItemGroup>
 </Project>
