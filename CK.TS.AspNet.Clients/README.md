@@ -20,18 +20,18 @@ The engine generates the `ClientDirectory` of the host from them: each `ClientIn
 
 ## A client application is a client of the party that declares it
 
-The client applications are the clients of their party, in the "Client" feature of
-[CK.AppIdentity.Client](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.Client/README.md):
+The client applications are the clients of their party, in the "PartyClient" feature of
+[CK.AppIdentity.PartyClient](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.PartyClient/README.md):
 the build says which client applications exist, the party's configuration says which ones it uses.
 
 ```jsonc
-"CK-AppIdentity": { "Local": { "Client": { "App": {}, "MiniApp": {} } } }
+"CK-AppIdentity": { "Local": { "PartyClient": { "App": {}, "MiniApp": {} } } }
 ```
 
 The [`TypeScriptClientFactory`](TypeScriptClientFactory.cs) creates the [`TypeScriptClient`](TypeScriptClient.cs) of a
 party that declares a client application of the `ClientDirectory` (its `Info` is its `ClientInfo`):
 - a client application requires the "HttpEndpoint" feature of its party (its endpoints serve it);
-- everything it is comes from the build: its declaration has no fact (a key in "Local:Client:{Name}" is an error);
+- everything it is comes from the build: its declaration has no fact (a key in "Local:PartyClient:{Name}" is an error);
 - a client application that the party doesn't declare is neither served nor announced.
 
 The engine of CK.TypeScript adds the missing declarations of the root party to the `appsettings.json` of a host project
@@ -77,8 +77,8 @@ this client application.
 
 ## The client applications in the description of the party
 
-A `TypeScriptClient` is described by its `Name` and its `RequestPath`: the "Client" feature adds the declared client
-applications to the description of the party (its `IParty.Description`, see the "PartyDescription" feature of
+A `TypeScriptClient` is described by its `Name` and its `RequestPath`: the "PartyClient" feature adds the declared
+client applications to the description of the party (its `IParty.Description`, see the "PartyDescription" feature of
 [CK.AppIdentity](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity/README.md#the-description-of-a-party)):
 the party announces them to its remotes, and the links that a remote builds for it (the mails of an Authentication
 Center) target them (`PartyDescription.GetClientApplicationUrl`).
@@ -88,6 +88,6 @@ Center) target them (`PartyDescription.GetClientApplicationUrl`).
 - [CK.TypeScript](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript/README.md) for the `ClientDirectory`.
 - [CK.AspNet](https://github.com/signature-opensource/CK-AspNet/blob/stable/CK.AspNet/README.md#the-enable-convention-and-the-contributions-of-the-packages)
   for the "Enable" convention and the contributions.
-- [CK.AppIdentity.Client](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.Client/README.md)
-  for the "Client" feature, and CK.AppIdentity.HttpEndpoint for the "HttpEndpoint" feature that serves them.
+- [CK.AppIdentity.PartyClient](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.PartyClient/README.md)
+  for the "PartyClient" feature, and CK.AppIdentity.HttpEndpoint for the "HttpEndpoint" feature that serves them.
 - [Yarp.ReverseProxy](https://github.com/dotnet/yarp) for the forwarding to the dev servers.

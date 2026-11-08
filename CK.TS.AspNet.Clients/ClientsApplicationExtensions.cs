@@ -64,9 +64,9 @@ public static class ClientsApplicationExtensions
         var isDevelopment = app.Environment.IsDevelopment();
         // The running status of a development party (when the DevRunningStatus feature of CK.AppIdentity is here).
         var status = app.Services.GetService<ClientsDevRunningStatusContributor>();
-        // The client applications of the root party: the ones it declares ("Local:Client:{Name}", the "Client" feature).
+        // The client applications of the root party: the ones it declares ("Local:PartyClient:{Name}", the "PartyClient" feature).
         // The ClientDirectory keeps the order of the build (the default client application last).
-        var declared = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<ClientFeature>()?.Clients
+        var declared = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<PartyClientFeature>()?.Clients
                                    .OfType<TypeScriptClient>()
                                    .Select( c => c.Name )
                                    .ToHashSet()

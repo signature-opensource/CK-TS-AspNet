@@ -5,7 +5,7 @@ namespace CK.TypeScript;
 
 /// <summary>
 /// A client application of a party: a TypeScript configuration of the BinPath that is a client application
-/// (its <see cref="ClientInfo"/>), declared by the party in its "Local:Client:{Name}" section. It is served by the
+/// (its <see cref="ClientInfo"/>), declared by the party in its "Local:PartyClient:{Name}" section. It is served by the
 /// endpoints of its party (it requires the "HttpEndpoint" feature) and announced in its description.
 /// </summary>
 public sealed class TypeScriptClient : PartyClient

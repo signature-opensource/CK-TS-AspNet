@@ -38,7 +38,7 @@ public sealed class TypeScriptClientFactory : IPartyClientFactory
         var facts = configuration.GetChildren();
         if( facts.Count > 0 )
         {
-            monitor.Error( $"The client application '{name}' of '{party.FullName}' has no configurable fact: '{facts.Select( f => f.Key ).Concatenate( "', '" )}' is not expected in \"Local:Client:{name}\"." );
+            monitor.Error( $"The client application '{name}' of '{party.FullName}' has no configurable fact: '{facts.Select( f => f.Key ).Concatenate( "', '" )}' is not expected in \"Local:PartyClient:{name}\"." );
             return null;
         }
         return new TypeScriptClient( party, _directory.Clients.Single( c => c.Name == name ), configuration );

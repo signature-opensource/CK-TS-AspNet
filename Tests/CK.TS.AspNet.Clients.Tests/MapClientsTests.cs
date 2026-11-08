@@ -43,7 +43,7 @@ public class MapClientsTests
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
                                               typeof( TypeScriptClientFactory ),
-                                              typeof( ClientFeatureDriver ) );
+                                              typeof( PartyClientFeatureDriver ) );
         configuration.EnsureAspect<TypeScriptAspectConfiguration>();
         var app = configuration.FirstBinPath.EnsureAspect<TypeScriptBinPathAspectConfiguration>();
         app.Name = "App";
@@ -81,10 +81,10 @@ public class MapClientsTests
 
     // A party: the contribution of ClientsHosting serves the client applications on its endpoint. The client projects are
     // under the content root (the test project folder): their ProjectPath is relative.
-    // The root party declares its client applications ("Local:Client:{Name}"): both by default.
+    // The root party declares its client applications ("Local:PartyClient:{Name}"): both by default.
     static void Declare( MutableConfigurationSection identity, params string[] clients )
     {
-        foreach( var c in clients ) identity[$"Local:Client:{c}"] = "";
+        foreach( var c in clients ) identity[$"Local:PartyClient:{c}"] = "";
     }
 
     static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, params (string Key, string Value)[] configuration )
@@ -131,7 +131,7 @@ public class MapClientsTests
         (await server.Client.GetAsync( "/" )).StatusCode.ShouldBe( System.Net.HttpStatusCode.NotFound );
 
         var root = server.Services.GetRequiredService<IApplicationIdentityService>();
-        root.GetRequiredFeature<ClientFeature>().Clients.Single().ShouldBeOfType<TypeScriptClient>().Name.ShouldBe( "MiniApp" );
+        root.GetRequiredFeature<PartyClientFeature>().Clients.Single().ShouldBeOfType<TypeScriptClient>().Name.ShouldBe( "MiniApp" );
         root.Description.ClientApplications.ShouldBe( [new ClientApplicationDescription( "MiniApp", "/mini-app" )] );
     }
 
@@ -139,7 +139,7 @@ public class MapClientsTests
     public async Task a_declared_client_application_has_no_configurable_fact_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
-        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c["Local:Client:App:Color"] = "Blue" ) );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c["Local:PartyClient:App:Color"] = "Blue" ) );
     }
 
     [Test]
@@ -306,7 +306,7 @@ public class MapClientsTests
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await CreateHostAsync( map, "Production" );
-        // The "Client" feature contributes the declared client applications of the root party.
+        // The "PartyClient" feature contributes the declared client applications of the root party.
         var apps = server.Services.GetRequiredService<ApplicationIdentityService>().Description.ClientApplications;
         apps.Select( a => a.Name ).ShouldBe( ["App", "MiniApp"], ignoreOrder: true );
         var description = new CK.AppIdentity.PartyDescription( new Uri( "https://acme.example.com" ), apps );

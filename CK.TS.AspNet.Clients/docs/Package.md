@@ -2,5 +2,5 @@ Serves the client applications of an ASP.NET host (its TypeScript configurations
 the host's origin: `app.MapClients()` serves their built files ("dist") in production, and in Development starts their
 dev server ("ng serve") and forwards to it, unless their "dist" is used (`UseDist`, `Clients:UseDist`). The list comes
 from the generated `ClientDirectory` (CK.TypeScript); a client application is served only when the party declares it
-("CK-AppIdentity:Local:Client:{Name}": TypeScriptClient, TypeScriptClientFactory, the "Client" feature of
-CK.AppIdentity.Client).
+("CK-AppIdentity:Local:PartyClient:{Name}": TypeScriptClient, TypeScriptClientFactory, the "PartyClient" feature of
+CK.AppIdentity.PartyClient).
