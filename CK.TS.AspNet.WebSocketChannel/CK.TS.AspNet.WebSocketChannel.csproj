@@ -7,6 +7,6 @@
     <Description>TypeScript client of the application-wide WebSocket channel: WSConnection opens the one socket, keeps its connection identifier, reconnects, and routes each frame to the handler registered for its topic. Needs nothing from the server package.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.95" />
+    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.96" />
   </ItemGroup>
 </Project>
