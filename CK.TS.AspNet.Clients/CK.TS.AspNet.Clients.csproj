@@ -10,12 +10,12 @@
     <!-- The dev server of a client application is reached through the host by YARP direct forwarding. -->
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
-    <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.1.ci.54" />
+    <PackageReference Include="CK.AspNet" Version="24.0.0-0.cris-auth.1.ci.55" />
     <!-- The client applications are clients of a party ("PartyClient" feature); they require its "HttpEndpoint" feature. -->
-    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.cris-auth.1.ci.44" />
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="24.0.0-0.cris-auth.1.ci.54" />
+    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.cris-auth.1.ci.45" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="24.0.0-0.cris-auth.1.ci.55" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.96" />
+    <PackageReference Include="CK.TypeScript" Version="3.0.0-0.cris-auth.1.ci.97" />
   </ItemGroup>
 </Project>
