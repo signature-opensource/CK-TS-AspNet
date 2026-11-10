@@ -31,7 +31,8 @@ the build says which client applications exist, the party's configuration says w
 The [`TypeScriptClientFactory`](TypeScriptClientFactory.cs) creates the [`TypeScriptClient`](TypeScriptClient.cs) of a
 party that declares a client application of the `ClientDirectory` (its `Info` is its `ClientInfo`):
 - a client application requires the "HttpEndpoint" feature of its party (its endpoints serve it);
-- everything it is comes from the build: its declaration has no fact (a key in "Local:PartyClient:{Name}" is an error);
+- everything it is comes from the build: its declaration has no fact, only the options of `TypeScriptClient` (any other
+  key in "Local:PartyClient:{Name}" is an error);
 - a client application that the party doesn't declare is neither served nor announced.
 
 The engine of CK.TypeScript adds the missing declarations of the root party to the `appsettings.json` of a host project
