@@ -11,7 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.TS.AspNet.WebSocketChannel\CK.TS.AspNet.WebSocketChannel.csproj" />
-    <PackageReference Include="CK.Testing.TypeScriptEngine" Version="3.0.0-0.cris-auth.1.ci.110" />
+    <PackageReference Include="CK.Testing.TypeScriptEngine" Version="3.0.0-0.cris-auth.1.ci.112" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="TSInlineTests\" />
