@@ -1,5 +1,6 @@
 using CK.AppIdentity;
 using CK.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -38,8 +39,12 @@ public sealed class TypeScriptClientFactory : IPartyClientFactory
     public PartyClient? Create( IActivityMonitor monitor, ILocalParty party, string name, ImmutableConfigurationSection configuration )
     {
         // Everything a client application is comes from the build: its configuration has no fact, only options (selected
-        // by the PartyClient feature).
-        var facts = configuration.GetChildren().Where( c => !_options.IsOptionName( typeof( TypeScriptClient ), c.Key ) ).ToList();
+        // by the PartyClient feature). Its compile time keys (its "Type" and the keys of its TypeScript configuration) are
+        // accepted: they are in the host's configuration when the App keeps them ("App:ProjectCompileKeys" in "ckonf.json").
+        var facts = configuration.GetChildren()
+                                 .Where( c => !_options.IsOptionName( typeof( TypeScriptClient ), c.Key )
+                                              && !IsCompileKey( c.Key ) )
+                                 .ToList();
         if( facts.Count > 0 )
         {
             monitor.Error( $"The client application '{name}' of '{party.FullName}' has no configurable fact: '{facts.Select( f => f.Key ).Concatenate( "', '" )}' is not expected in \"Local:PartyClient:{name}\" (only its options are)." );
@@ -47,4 +52,7 @@ public sealed class TypeScriptClientFactory : IPartyClientFactory
         }
         return new TypeScriptClient( party, _directory.Clients.Single( c => c.Name == name ), configuration );
     }
+
+    static bool IsCompileKey( string key ) => key.Equals( "Type", StringComparison.OrdinalIgnoreCase )
+                                              || CK.Setup.TypeScriptBinPathAspectConfiguration.ClientConfigurationKeys.Contains( key );
 }

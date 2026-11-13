@@ -149,6 +149,21 @@ public class MapClientsTests
     }
 
     [Test]
+    public async Task the_compile_time_keys_of_a_client_are_accepted_Async()
+    {
+        // When the App keeps them in the projection ("App:ProjectCompileKeys" in "ckonf.json"): its "Type" and its TypeScript keys.
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
+        {
+            c["Local:PartyClient:App:Type"] = "TypeScript";
+            c["Local:PartyClient:App:Kind"] = "DefaultApp";
+            c["Local:PartyClient:App:DevServerPort"] = "4200";
+            c["Local:PartyClient:App:Types:0"] = "Some.Type, Some.Assembly";
+        }, configureHost: b => b.Environment.EnvironmentName = "Production" );
+        (await GetAsync( server, "/" )).ShouldBe( "THE-APP" );
+    }
+
+    [Test]
     public async Task the_contribution_of_ClientsHosting_serves_the_client_applications_once_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );

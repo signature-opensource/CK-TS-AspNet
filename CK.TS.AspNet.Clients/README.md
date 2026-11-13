@@ -22,21 +22,24 @@ The engine generates the `ClientDirectory` of the host from them: each `ClientIn
 
 The client applications are the clients of their party, in the "PartyClient" feature of
 [CK.AppIdentity.PartyClient](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.PartyClient/README.md):
-the build says which client applications exist, the party's configuration says which ones it uses.
+the party's configuration declares them, and with the App's `ckonf.json` (CK.AppBuilder) this declaration is the source
+of the build: a client whose `"Type"` is `"TypeScript"` configures the TypeScript aspect (see
+[CK.TypeScript.Engine](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript.Engine/README.md)).
 
 ```jsonc
-"CK-AppIdentity": { "Local": { "PartyClient": { "App": {}, "MiniApp": {} } } }
+"CK-AppIdentity": { "Local": { "PartyClient": {
+  "App": { "Type": "TypeScript", "Kind": "DefaultApp", "DevServerPort": 4200 },
+  "MiniApp": { "Type": "TypeScript", "Kind": "App", "DevServerPort": 4201, "StaticFiles": { "AssetsMaxAge": "01:00:00" } } } } }
 ```
 
 The [`TypeScriptClientFactory`](TypeScriptClientFactory.cs) creates the [`TypeScriptClient`](TypeScriptClient.cs) of a
 party that declares a client application of the `ClientDirectory` (its `Info` is its `ClientInfo`):
 - a client application requires the "HttpEndpoint" feature of its party (its endpoints serve it);
-- everything it is comes from the build: its declaration has no fact, only the options of `TypeScriptClient` (any other
-  key in "Local:PartyClient:{Name}" is an error);
+- everything it is comes from the build: its declaration has no fact, only the options of `TypeScriptClient` and its
+  compile time keys (its `Type` and the `TypeScriptBinPathAspectConfiguration.ClientConfigurationKeys`: they reach the run
+  time only when the App keeps them in the projection, "App:ProjectCompileKeys"); any other key in
+  "Local:PartyClient:{Name}" is an error;
 - a client application that the party doesn't declare is neither served nor announced.
-
-The engine of CK.TypeScript adds the missing declarations of the root party to the `appsettings.json` of a host project
-(a temporary help, see [CK.TypeScript](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript/README.md)).
 
 ## No call serves them
 
