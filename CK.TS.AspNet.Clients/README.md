@@ -22,7 +22,7 @@ The engine generates the `ClientDirectory` of the host from them: each `ClientIn
 
 The client applications are the clients of their party, in the "PartyClient" feature of
 [CK.AppIdentity.PartyClient](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.PartyClient/README.md):
-the party's configuration declares them, and with the App's `ckonf.json` (CK.AppBuilder) this declaration is the source
+the party's configuration declares them, and with the builder's `ckonf.json` (CK.AppBuilder) this declaration is the source
 of the build: a client whose `"Type"` is `"TypeScript"` configures the TypeScript aspect (see
 [CK.TypeScript.Engine](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript.Engine/README.md)).
 
