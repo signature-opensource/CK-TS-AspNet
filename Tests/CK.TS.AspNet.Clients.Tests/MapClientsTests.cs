@@ -29,6 +29,9 @@ public class MapClientsTests
         Directory.CreateDirectory( output );
         File.WriteAllText( output.AppendPart( "index.html" ), content );
         File.WriteAllText( output.AppendPart( "main.js" ), $"// {name}" );
+        // A hashed bundle (the esbuild names of the Angular builder) and a copied asset.
+        File.WriteAllText( output.AppendPart( "main-VMMCN5NP.js" ), $"// {name} hashed" );
+        File.WriteAllText( output.AppendPart( "app.custom" ), "{}" );
     }
 
     // Runs the engine with the App (default client application) and the MiniApp, both built ("dist").
@@ -43,6 +46,9 @@ public class MapClientsTests
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
                                               typeof( TypeScriptClientFactory ),
+                                              // The owner of the StaticFiles option and the option.
+                                              typeof( TypeScriptClient ),
+                                              typeof( StaticFilesOption ),
                                               typeof( PartyClientFeatureDriver ) );
         configuration.EnsureAspect<TypeScriptAspectConfiguration>();
         var app = configuration.FirstBinPath.EnsureAspect<TypeScriptBinPathAspectConfiguration>();
@@ -153,6 +159,95 @@ public class MapClientsTests
 
         (await GetAsync( server, "/some/route" )).ShouldBe( "THE-APP" );
         (await GetAsync( server, "/mini-app/some/route" )).ShouldBe( "THE-MINI-APP" );
+    }
+
+    static async Task<Microsoft.AspNetCore.Http.IHeaderDictionary> GetHeadersAsync( RunningAspNetServer server, string path )
+    {
+        using var response = await server.Client.GetAsync( path );
+        response.StatusCode.ShouldBe( System.Net.HttpStatusCode.OK, path );
+        var headers = new Microsoft.AspNetCore.Http.HeaderDictionary();
+        foreach( var h in response.Headers.Concat( response.Content.Headers ) ) headers[h.Key] = h.Value.ToArray();
+        return headers;
+    }
+
+    [Test]
+    public async Task in_Production_the_built_files_have_cache_and_security_headers_by_default_Async()
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await using var server = await CreateHostAsync( map, "Production" );
+
+        // The index.html (and the client routes that serve it): always revalidated, not framed.
+        foreach( var path in new[] { "/", "/some/route", "/mini-app/", "/mini-app/some/route" } )
+        {
+            var html = await GetHeadersAsync( server, path );
+            html.CacheControl.ToString().ShouldBe( "no-cache", path );
+            html.ContentSecurityPolicy.ToString().ShouldBe( "frame-ancestors 'none'", path );
+            html.XContentTypeOptions.ToString().ShouldBe( "nosniff", path );
+            html["Referrer-Policy"].ToString().ShouldBe( "strict-origin-when-cross-origin", path );
+        }
+        // A hashed bundle: cached forever.
+        foreach( var path in new[] { "/main-VMMCN5NP.js", "/mini-app/main-VMMCN5NP.js" } )
+        {
+            var hashed = await GetHeadersAsync( server, path );
+            hashed.CacheControl.ToString().ShouldBe( "public, max-age=31536000, immutable", path );
+            hashed.ContentSecurityPolicy.Count.ShouldBe( 0, path );
+            hashed.XContentTypeOptions.ToString().ShouldBe( "nosniff", path );
+        }
+        // The other files: revalidated.
+        (await GetHeadersAsync( server, "/main.js" )).CacheControl.ToString().ShouldBe( "no-cache" );
+        // An unknown extension is not served (".custom" is not in the default content types).
+        (await server.Client.GetAsync( "/app.custom" )).StatusCode.ShouldNotBe( System.Net.HttpStatusCode.OK );
+    }
+
+    [Test]
+    public async Task the_StaticFiles_option_of_a_client_application_changes_the_defaults_or_disables_them_Async()
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
+        {
+            // The App: served without the headers (a proxy in front sets them).
+            c["Local:PartyClient:App:StaticFiles"] = "false";
+            c["Local:PartyClient:MiniApp:StaticFiles:AssetsMaxAge"] = "01:00:00";
+            c["Local:PartyClient:MiniApp:StaticFiles:ContentSecurityPolicy"] = "default-src 'self'";
+            c["Local:PartyClient:MiniApp:StaticFiles:Headers:Permissions-Policy"] = "camera=()";
+            c["Local:PartyClient:MiniApp:StaticFiles:Headers:Referrer-Policy"] = "";
+            c["Local:PartyClient:MiniApp:StaticFiles:ContentTypes:.custom"] = "application/x-custom";
+        }, configureHost: b => b.Environment.EnvironmentName = "Production" );
+
+        var root = server.Services.GetRequiredService<IApplicationIdentityService>();
+        var clients = root.GetRequiredFeature<PartyClientFeature>().Clients.OfType<TypeScriptClient>().ToDictionary( c => c.Name );
+        clients["App"].StaticFiles.ShouldBeNull();
+        clients["MiniApp"].StaticFiles.ShouldNotBeNull();
+
+        var app = await GetHeadersAsync( server, "/" );
+        app.CacheControl.Count.ShouldBe( 0 );
+        app.ContentSecurityPolicy.Count.ShouldBe( 0 );
+        app.XContentTypeOptions.Count.ShouldBe( 0 );
+
+        var html = await GetHeadersAsync( server, "/mini-app/some/route" );
+        html.CacheControl.ToString().ShouldBe( "no-cache" );
+        html.ContentSecurityPolicy.ToString().ShouldBe( "default-src 'self'" );
+        html["Permissions-Policy"].ToString().ShouldBe( "camera=()" );
+        html.ContainsKey( "Referrer-Policy" ).ShouldBeFalse();
+        html.XContentTypeOptions.ToString().ShouldBe( "nosniff" );
+
+        (await GetHeadersAsync( server, "/mini-app/main.js" )).CacheControl.ToString().ShouldBe( "public, max-age=3600" );
+        (await GetHeadersAsync( server, "/mini-app/main-VMMCN5NP.js" )).CacheControl.ToString().ShouldBe( "public, max-age=31536000, immutable" );
+        var custom = await GetHeadersAsync( server, "/mini-app/app.custom" );
+        custom.ContentType.ToString().ShouldBe( "application/x-custom" );
+        custom.CacheControl.ToString().ShouldBe( "public, max-age=3600" );
+    }
+
+    [TestCase( "Unknown", "true" )]
+    [TestCase( "AssetsMaxAge", "soon" )]
+    [TestCase( "HashedFilePattern", "(" )]
+    [TestCase( "Headers:Cache-Control", "no-store" )]
+    [TestCase( "ContentTypes:webmanifest", "application/manifest+json" )]
+    [TestCase( "ServeUnknownFileTypes", "maybe" )]
+    public async Task an_invalid_StaticFiles_option_is_an_error_Async( string key, string value )
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c[$"Local:PartyClient:App:StaticFiles:{key}"] = value ) );
     }
 
     [Test]

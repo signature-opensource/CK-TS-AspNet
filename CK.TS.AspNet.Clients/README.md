@@ -56,13 +56,53 @@ path, the default one last:
   before it answers: the first requests may fail. A dev server that exits while the host runs is an error in the log,
   with its exit code and its last output lines.
 - **Otherwise, by its built files ("dist")**: the static files of `{ContentRoot}/{ProjectPath}/{OutputPath}`, with a
-  fallback to its `index.html` for its client routes (a deep link like `/mini-app/some/route`). A client application that
-  is not built is skipped with a warning.
+  fallback to its `index.html` for its client routes (a deep link like `/mini-app/some/route`), the caching and the
+  security headers of its `StaticFiles` option (below). A client application that is not built is skipped with a warning.
 
 In Development, a client application whose `UseDist` is true uses its built files too: the configuration's `UseDist` is
 its default (a client application nobody develops in this host), the host's configuration overrides it for a run:
 `Clients:UseDist=true` for all the client applications (a UI test, a backend-only debugging session),
 `Clients:{Name}:UseDist=true|false` for one of them (`dotnet run -- --Clients:MiniApp:UseDist=false`).
+
+## The built files: the `StaticFiles` option
+
+The built files are served as a production server serves them, by the [`StaticFilesOption`](StaticFilesOption.cs) of
+each client application: the first option of a `TypeScriptClient` (a [`TypeScriptClientOption`](TypeScriptClientOption.cs),
+see the options of a party client in
+[CK.AppIdentity.PartyClient](https://github.com/signature-opensource/CK-AppIdentity/blob/stable/CK.AppIdentity.PartyClient/README.md)).
+It is enabled by default: without configuration, a client application has these defaults.
+
+- **The caching, by kind of file:**
+  - the HTML files (`index.html`, also served for the client routes): `Cache-Control: no-cache`, always revalidated (the
+    ETag makes it cheap): a new deployment is seen at once;
+  - the hashed files, whose name ends with `-` and 8 base32 characters before the extension (`main-VMMCN5NP.js`, the
+    names of the Angular builder): `public, max-age=31536000, immutable`;
+  - the other files (the copied assets, like `flags/en.svg`, that can change without changing name): `no-cache`.
+- **The security headers:** `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` on
+  every file; `Content-Security-Policy: frame-ancestors 'none'` on the HTML files (the pages can't be framed). Only this
+  directive: a full policy (the scripts, the inline styles) is the application's to write.
+
+Its section, "Local:PartyClient:{Name}:StaticFiles", changes the defaults (any other key is an error):
+
+```jsonc
+"MiniApp": {
+  "StaticFiles": {
+    "HashedFilePattern": "-[A-Z2-7]{8}\\.[A-Za-z0-9.]+$", // The default: a regular expression on the file name.
+    "AssetsMaxAge": "01:00:00",                           // The other files: public, max-age=3600.
+    "ContentSecurityPolicy": "default-src 'self'",        // Replaces the default ("" for none).
+    "Headers": { "Permissions-Policy": "camera=()",       // Added to every file...
+                 "Referrer-Policy": "" },                 // ...or removed.
+    "ContentTypes": { ".custom": "application/x-custom" }, // Extension mappings added (or removed with "").
+    "ServeUnknownFileTypes": false,                       // The StaticFileOptions of ASP.NET...
+    "DefaultContentType": "application/octet-stream",
+    "RedirectToAppendTrailingSlash": true
+  }
+}
+```
+
+`"StaticFiles": false` disables it: the files are served without these headers, when a proxy or a CDN in front sets
+them. The file provider and the request path are the client application's, they are not configurable. The option
+applies where the "dist" is served: in Development, `Clients:UseDist=true` tests it.
 
 ## The running status of a development party
 

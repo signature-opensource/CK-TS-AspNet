@@ -29,8 +29,9 @@ public static class ClientsApplicationExtensions
     ///   <item>
     ///   Otherwise, or when its "dist" is used (<see cref="ClientInfo.UseDist"/>, that the host's configuration overrides with
     ///   "Clients:{Name}:UseDist" or "Clients:UseDist"), by its built files (<see cref="ClientInfo.ProjectPath"/>/<see cref="ClientInfo.OutputPath"/>,
-    ///   relative to the content root) with a fallback to its "index.html" for its client routes. A client application that is
-    ///   not built is skipped with a warning.
+    ///   relative to the content root) with a fallback to its "index.html" for its client routes, the caching and the security
+    ///   headers of its <see cref="TypeScriptClient.StaticFiles"/> option. A client application that is not built is skipped
+    ///   with a warning.
     ///   </item>
     /// </list>
     /// </summary>
@@ -68,12 +69,11 @@ public static class ClientsApplicationExtensions
         // The ClientDirectory keeps the order of the build (the default client application last).
         var declared = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<PartyClientFeature>()?.Clients
                                    .OfType<TypeScriptClient>()
-                                   .Select( c => c.Name )
-                                   .ToHashSet()
+                                   .ToDictionary( c => c.Name )
                        ?? [];
         foreach( var client in app.Services.GetRequiredService<ClientDirectory>().Clients )
         {
-            if( !declared.Contains( client.Name ) ) continue;
+            if( !declared.TryGetValue( client.Name, out var declaredClient ) ) continue;
             // The default client application ("/") has an empty path prefix.
             var requestPath = client.RequestPath.TrimEnd( '/' );
             var projectPath = Path.Combine( app.Environment.ContentRootPath, client.ProjectPath );
@@ -85,7 +85,7 @@ public static class ClientsApplicationExtensions
                 app.MapForwarder( $"{requestPath}/{{**catch-all}}", $"http://localhost:{client.DevServerPort}" )
                    .Add( b => ((RouteEndpointBuilder)b).Order = int.MaxValue );
             }
-            else if( MapDist( monitor, app, client, requestPath, Path.Combine( projectPath, client.OutputPath ) ) )
+            else if( MapDist( monitor, app, client, declaredClient.StaticFiles, requestPath, Path.Combine( projectPath, client.OutputPath ) ) )
             {
                 status?.OnMapped( client, useDist: true );
             }
@@ -107,7 +107,7 @@ public static class ClientsApplicationExtensions
         return client.UseDist;
     }
 
-    static bool MapDist( IStaticLogger monitor, WebApplication app, ClientInfo client, string requestPath, string output )
+    static bool MapDist( IStaticLogger monitor, WebApplication app, ClientInfo client, StaticFilesOption? staticFiles, string requestPath, string output )
     {
         if( !Directory.Exists( output ) )
         {
@@ -116,12 +116,16 @@ public static class ClientsApplicationExtensions
         }
         monitor.Info( $"Client application '{client}' is served from '{output}'." );
         var files = new PhysicalFileProvider( output );
-        app.UseDefaultFiles( new DefaultFilesOptions { FileProvider = files, RequestPath = requestPath } );
-        app.UseStaticFiles( new StaticFileOptions { FileProvider = files, RequestPath = requestPath } );
+        // Without its "StaticFiles" option (disabled), the files are served without cache and security headers.
+        var staticFileOptions = staticFiles?.CreateStaticFileOptions( files, requestPath )
+                                ?? new StaticFileOptions { FileProvider = files, RequestPath = requestPath };
+        app.UseDefaultFiles( staticFiles?.CreateDefaultFilesOptions( files, requestPath )
+                             ?? new DefaultFilesOptions { FileProvider = files, RequestPath = requestPath } );
+        app.UseStaticFiles( staticFileOptions );
         // The fallback rewrites the request path to the file path: it must be under the RequestPath.
         app.MapFallbackToFile( $"{requestPath}/{{*path:nonfile}}",
                                $"{requestPath.TrimStart( '/' )}/index.html".TrimStart( '/' ),
-                               new StaticFileOptions { FileProvider = files, RequestPath = requestPath } );
+                               staticFileOptions );
         return true;
     }
 }
