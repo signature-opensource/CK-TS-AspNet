@@ -14,7 +14,7 @@ namespace CK.TypeScript;
 /// <summary>
 /// Contributes the "Clients" section of the running status of a development party (the "DevRunningStatus" feature of
 /// CK.AppIdentity): the client applications served by <see cref="ClientsApplicationExtensions.MapClients"/>, with their
-/// "Name", "Kind" ("DefaultApp" or "App"), "RequestPath", "DevServerPort", "UseDist" (the effective one), "Serving" and
+/// "Name", "RequestPath" (the default client application is the one at "/"), "DevServerPort", "UseDist" (the effective one), "Serving" and
 /// "Error".
 /// <para>
 /// A client application that uses its "dist" is serving. One that uses its dev server is serving once its port answers:
@@ -104,8 +104,6 @@ public sealed class ClientsDevRunningStatusContributor : IDevRunningStatusContri
             {
                 writer.WriteStartObject();
                 writer.WriteString( "Name", c.Info.Name );
-                // The default client application is the one served at the root.
-                writer.WriteString( "Kind", c.Info.RequestPath == "/" ? "DefaultApp" : "App" );
                 writer.WriteString( "RequestPath", c.Info.RequestPath );
                 writer.WriteNumber( "DevServerPort", c.Info.DevServerPort );
                 writer.WriteBoolean( "UseDist", c.UseDist );

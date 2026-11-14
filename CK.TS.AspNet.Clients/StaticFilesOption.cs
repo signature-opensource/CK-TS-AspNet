@@ -15,7 +15,7 @@ namespace CK.TypeScript;
 /// <summary>
 /// How the built files ("dist") of a client application are served: the caching, the security headers and the
 /// <see cref="StaticFileOptions"/> that make sense in configuration. Enabled by default: a client application is always
-/// served with the defaults below, its "Local:PartyClient:{Name}:StaticFiles" section only changes them, and
+/// served with the defaults below, its "Local:PartyClient:{Name}:Hosting:StaticFiles" section only changes them, and
 /// <c>"StaticFiles": false</c> serves the files without these headers (when a proxy or a CDN in front sets them).
 /// <para>
 /// The caching, by kind of file:
@@ -49,7 +49,7 @@ namespace CK.TypeScript;
 /// </code>
 /// </summary>
 [PartyClientOption( IsEnabledByDefault = true )]
-public sealed partial class StaticFilesOption : TypeScriptClientOption
+public sealed partial class StaticFilesOption : HostingClientOption
 {
     const string _noCache = "no-cache";
     const string _immutable = "public, max-age=31536000, immutable";
@@ -71,7 +71,7 @@ public sealed partial class StaticFilesOption : TypeScriptClientOption
     bool _redirectToAppendTrailingSlash = true;
 
     /// <inheritdoc />
-    public override bool Initialize( IActivityMonitor monitor, TypeScriptClient client, ImmutableConfigurationSection? configuration )
+    public override bool Initialize( IActivityMonitor monitor, HostingClientFeature hosting, ImmutableConfigurationSection? configuration )
     {
         var headers = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase )
         {

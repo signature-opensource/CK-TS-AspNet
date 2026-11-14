@@ -23,6 +23,39 @@ namespace CK.TypeScript.Tests;
 [TestFixture]
 public class MapClientsTests
 {
+    /// <summary>
+    /// A web build ("TestBuild") that stands for "NgApp" (CK.TS.Angular): the client application of the ClientDirectory.
+    /// </summary>
+    public sealed class TestBuildClientFeature : ClientFeature, IWebAppBuild
+    {
+        public TestBuildClientFeature( PartyClient client, ImmutableConfigurationSection configuration, ClientInfo info )
+            : base( client, configuration )
+        {
+            Info = info;
+        }
+
+        public ClientInfo Info { get; }
+
+        public NormalizedPath ProjectPath => Info.ProjectPath;
+
+        public NormalizedPath OutputPath => Info.OutputPath;
+
+        public System.Diagnostics.ProcessStartInfo GetDevServerStart( string yarnPath, int port ) => new( "node", $"\"{yarnPath}\" ng serve --port {port}" );
+    }
+
+    public sealed class TestBuildClientFeatureDriver : ClientFeatureDriver<TestBuildClientFeature>
+    {
+        readonly ClientDirectory _directory;
+
+        public TestBuildClientFeatureDriver( ClientDirectory directory ) => _directory = directory;
+
+        protected override TestBuildClientFeature? Create( IActivityMonitor monitor, PartyClient client, ImmutableConfigurationSection configuration )
+            => new( client, configuration, _directory.Clients.Single( c => c.Name == client.Name ) );
+    }
+
+    // The maps whose MiniApp uses its dist ("Hosting:UseDist": true).
+    static readonly Dictionary<IStObjMap, bool> _miniAppUseDist = new();
+
     static void CreateBuiltClient( NormalizedPath projectPath, string name, string content )
     {
         var output = projectPath.Combine( $"dist/{name}/browser" );
@@ -45,9 +78,12 @@ public class MapClientsTests
         configuration.FirstBinPath.Types.Add( typeof( ClientDirectory ),
                                               typeof( ClientsHosting ),
                                               typeof( ClientsDevRunningStatusContributor ),
-                                              typeof( TypeScriptClientFactory ),
+                                              typeof( PartyComponentDirectory ),
+                                              typeof( HostingClientFeatureDriver ),
+                                              typeof( TestBuildClientFeatureDriver ),
                                               // The owner of the StaticFiles option and the option.
-                                              typeof( TypeScriptClient ),
+                                              typeof( HostingClientFeature ),
+                                              typeof( TestBuildClientFeature ),
                                               typeof( StaticFilesOption ),
                                               typeof( PartyClientFeatureDriver ) );
         configuration.EnsureAspect<TypeScriptAspectConfiguration>();
@@ -62,13 +98,13 @@ public class MapClientsTests
             Name = "MiniApp",
             Kind = ClientKind.App,
             DevServerPort = miniAppPort,
-            UseDist = miniAppUseDist,
             TargetProjectPath = root.AppendPart( "MiniApp" ),
             IntegrationMode = CKGenIntegrationMode.None
         } );
         var map = (await configuration.RunSuccessfullyAsync()).LoadMap();
         CreateBuiltClient( root.AppendPart( "App" ), "App", "THE-APP" );
         CreateBuiltClient( root.AppendPart( "MiniApp" ), "MiniApp", "THE-MINI-APP" );
+        _miniAppUseDist[map] = miniAppUseDist;
         return map;
     }
 
@@ -87,10 +123,16 @@ public class MapClientsTests
 
     // A party: the contribution of ClientsHosting serves the client applications on its endpoint. The client projects are
     // under the content root (the test project folder): their ProjectPath is relative.
-    // The root party declares its client applications ("Local:PartyClient:{Name}"): both by default.
-    static void Declare( MutableConfigurationSection identity, params string[] clients )
+    // The root party declares its client applications ("Local:PartyClient:{Name}"): both by default, with their web build
+    // and their hosting.
+    static void Declare( MutableConfigurationSection identity, bool miniAppUseDist, params string[] clients )
     {
-        foreach( var c in clients ) identity[$"Local:PartyClient:{c}"] = "";
+        foreach( var c in clients )
+        {
+            identity[$"Local:PartyClient:{c}:TestBuild"] = "true";
+            if( c == "MiniApp" && miniAppUseDist ) identity[$"Local:PartyClient:{c}:Hosting:UseDist"] = "true";
+            else identity[$"Local:PartyClient:{c}:Hosting"] = "true";
+        }
     }
 
     static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, params (string Key, string Value)[] configuration )
@@ -100,7 +142,7 @@ public class MapClientsTests
 
     static Task<RunningAspNetServer> CreateHostAsync( IStObjMap map, string environment, string[] declared, params (string Key, string Value)[] configuration )
     {
-        return map.CreateRunningAspNetServerAsync( identity: c => Declare( c, declared ), configureHost: b =>
+        return map.CreateRunningAspNetServerAsync( identity: c => Declare( c, _miniAppUseDist[map], declared ), configureHost: b =>
         {
             b.Environment.EnvironmentName = environment;
             b.Configuration.AddInMemoryCollection( configuration.Select( c => new KeyValuePair<string, string?>( c.Key, c.Value ) ) );
@@ -137,28 +179,40 @@ public class MapClientsTests
         (await server.Client.GetAsync( "/" )).StatusCode.ShouldBe( System.Net.HttpStatusCode.NotFound );
 
         var root = server.Services.GetRequiredService<IApplicationIdentityService>();
-        root.GetRequiredFeature<PartyClientFeature>().Clients.Single().ShouldBeOfType<TypeScriptClient>().Name.ShouldBe( "MiniApp" );
+        root.GetRequiredFeature<PartyClientFeature>().Clients.Single().Name.ShouldBe( "MiniApp" );
         root.Description.ClientApplications.ShouldBe( [new ClientApplicationDescription( "MiniApp", "/mini-app" )] );
     }
 
     [Test]
-    public async Task a_declared_client_application_has_no_configurable_fact_Async()
+    public async Task a_key_that_Hosting_doesnt_have_is_an_error_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
-        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c["Local:PartyClient:App:Color"] = "Blue" ) );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c =>
+        {
+            c["Local:PartyClient:App:TestBuild"] = "true";
+            c["Local:PartyClient:App:Hosting:Color"] = "Blue";
+        } ) );
+    }
+
+    [Test]
+    public async Task Hosting_requires_a_web_build_Async()
+    {
+        var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c["Local:PartyClient:App:Hosting"] = "true" ) );
     }
 
     [Test]
     public async Task the_compile_time_keys_of_a_client_are_accepted_Async()
     {
-        // When the App keeps them in the projection ("App:ProjectCompileKeys" in "ckonf.json"): its "Type" and its TypeScript keys.
+        // When the App keeps them in the projection ("ProjectCompileKeys" in "ckonf.json"): its type set and the compile
+        // time keys of "Hosting".
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
         {
-            c["Local:PartyClient:App:Type"] = "TypeScript";
-            c["Local:PartyClient:App:Kind"] = "DefaultApp";
-            c["Local:PartyClient:App:DevServerPort"] = "4200";
             c["Local:PartyClient:App:Types:0"] = "Some.Type, Some.Assembly";
+            c["Local:PartyClient:App:TestBuild"] = "true";
+            c["Local:PartyClient:App:Hosting:RequestPath"] = "/";
+            c["Local:PartyClient:App:Hosting:DevServerPort"] = "4200";
         }, configureHost: b => b.Environment.EnvironmentName = "Production" );
         (await GetAsync( server, "/" )).ShouldBe( "THE-APP" );
     }
@@ -169,7 +223,7 @@ public class MapClientsTests
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         // The map registers the contribution of ClientsHosting, the "HttpEndpoint" feature applies it. The application
         // enables it too: the client applications are mapped once (twice would be ambiguous routes).
-        await using var server = await map.CreateRunningAspNetServerAsync( identity: c => Declare( c, "App", "MiniApp" ),
+        await using var server = await map.CreateRunningAspNetServerAsync( identity: c => Declare( c, false, "App", "MiniApp" ),
                                                                            configureEndpoint: web => web.EnableClients() );
 
         (await GetAsync( server, "/some/route" )).ShouldBe( "THE-APP" );
@@ -220,17 +274,19 @@ public class MapClientsTests
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
         {
+            c["Local:PartyClient:App:TestBuild"] = "true";
+            c["Local:PartyClient:MiniApp:TestBuild"] = "true";
             // The App: served without the headers (a proxy in front sets them).
-            c["Local:PartyClient:App:StaticFiles"] = "false";
-            c["Local:PartyClient:MiniApp:StaticFiles:AssetsMaxAge"] = "01:00:00";
-            c["Local:PartyClient:MiniApp:StaticFiles:ContentSecurityPolicy"] = "default-src 'self'";
-            c["Local:PartyClient:MiniApp:StaticFiles:Headers:Permissions-Policy"] = "camera=()";
-            c["Local:PartyClient:MiniApp:StaticFiles:Headers:Referrer-Policy"] = "";
-            c["Local:PartyClient:MiniApp:StaticFiles:ContentTypes:.custom"] = "application/x-custom";
+            c["Local:PartyClient:App:Hosting:StaticFiles"] = "false";
+            c["Local:PartyClient:MiniApp:Hosting:StaticFiles:AssetsMaxAge"] = "01:00:00";
+            c["Local:PartyClient:MiniApp:Hosting:StaticFiles:ContentSecurityPolicy"] = "default-src 'self'";
+            c["Local:PartyClient:MiniApp:Hosting:StaticFiles:Headers:Permissions-Policy"] = "camera=()";
+            c["Local:PartyClient:MiniApp:Hosting:StaticFiles:Headers:Referrer-Policy"] = "";
+            c["Local:PartyClient:MiniApp:Hosting:StaticFiles:ContentTypes:.custom"] = "application/x-custom";
         }, configureHost: b => b.Environment.EnvironmentName = "Production" );
 
         var root = server.Services.GetRequiredService<IApplicationIdentityService>();
-        var clients = root.GetRequiredFeature<PartyClientFeature>().Clients.OfType<TypeScriptClient>().ToDictionary( c => c.Name );
+        var clients = root.GetRequiredFeature<PartyClientFeature>().Clients.ToDictionary( c => c.Name, c => c.GetFeature<HostingClientFeature>().ShouldNotBeNull() );
         clients["App"].StaticFiles.ShouldBeNull();
         clients["MiniApp"].StaticFiles.ShouldNotBeNull();
 
@@ -262,7 +318,11 @@ public class MapClientsTests
     public async Task an_invalid_StaticFiles_option_is_an_error_Async( string key, string value )
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
-        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c => c[$"Local:PartyClient:App:StaticFiles:{key}"] = value ) );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c =>
+        {
+            c["Local:PartyClient:App:TestBuild"] = "true";
+            c[$"Local:PartyClient:App:Hosting:StaticFiles:{key}"] = value;
+        } ) );
     }
 
     [Test]
@@ -327,10 +387,8 @@ public class MapClientsTests
         server.Services.GetRequiredService<ClientsDevRunningStatusContributor>().IsReady.ShouldBeTrue();
         var status = GetStatus( server );
         status.Count.ShouldBe( 2 );
-        status["App"].GetProperty( "Kind" ).GetString().ShouldBe( "DefaultApp" );
         status["App"].GetProperty( "RequestPath" ).GetString().ShouldBe( "/" );
         status["App"].GetProperty( "DevServerPort" ).GetInt32().ShouldBe( 4200 );
-        status["MiniApp"].GetProperty( "Kind" ).GetString().ShouldBe( "App" );
         status["MiniApp"].GetProperty( "RequestPath" ).GetString().ShouldBe( "/mini-app" );
         foreach( var c in status.Values )
         {

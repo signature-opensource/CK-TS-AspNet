@@ -10,7 +10,7 @@ using System.Threading;
 namespace CK.TypeScript;
 
 /// <summary>
-/// Starts the dev server of a client application ("ng serve" through its yarn) and stops it with the host.
+/// Starts the dev server of a client application (its <see cref="IWebAppBuild.GetDevServerStart"/> through its yarn) and stops it with the host.
 /// A dev server that exits while the host runs is an error: its exit code and its last output lines.
 /// </summary>
 static class DevServer
@@ -21,6 +21,7 @@ static class DevServer
     internal static void EnsureRunning( IStaticLogger monitor,
                                         WebApplication app,
                                         ClientInfo client,
+                                        CK.AppIdentity.IWebAppBuild build,
                                         string projectPath,
                                         ClientsDevRunningStatusContributor? status )
     {
@@ -33,17 +34,16 @@ static class DevServer
         var yarn = FindYarn( projectPath );
         if( yarn == null )
         {
-            monitor.Warn( $"No yarn found (.yarn/releases/yarn*.cjs in or above '{projectPath}'): the dev server of the client application '{client}' must be started (\"ng serve --port {port}\")." );
+            monitor.Warn( $"No yarn found (.yarn/releases/yarn*.cjs in or above '{projectPath}'): the dev server of the client application '{client}' must be started on port {port}." );
             return;
         }
-        var process = Process.Start( new ProcessStartInfo( "node", $"\"{yarn}\" ng serve --port {port}" )
-        {
-            WorkingDirectory = projectPath,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        } );
+        var start = build.GetDevServerStart( yarn, port );
+        start.WorkingDirectory = projectPath;
+        start.UseShellExecute = false;
+        start.RedirectStandardOutput = true;
+        start.RedirectStandardError = true;
+        start.CreateNoWindow = true;
+        var process = Process.Start( start );
         if( process == null )
         {
             monitor.Warn( $"Unable to start the dev server of the client application '{client}'." );

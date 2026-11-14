@@ -12,25 +12,25 @@ using System.Linq;
 namespace CK.TypeScript;
 
 /// <summary>
-/// Serves the client applications of the <see cref="ClientDirectory"/>.
+/// Serves the clients of the root party that have the "Hosting" feature (<see cref="HostingClientFeature"/>).
 /// </summary>
 public static class ClientsApplicationExtensions
 {
     /// <summary>
-    /// Serves each client application of the <see cref="ClientDirectory"/> under its <see cref="ClientInfo.RequestPath"/>
+    /// Serves each client of the root party that has the "Hosting" feature under its <see cref="HostingClientFeature.RequestPath"/>
     /// (the default one, served at "/", is mapped last):
     /// <list type="bullet">
     ///   <item>
-    ///   In Development, by its dev server: the host starts it ("ng serve" on its <see cref="ClientInfo.DevServerPort"/>, stopped
+    ///   In Development, by its dev server: the host starts it (its web build's <see cref="IWebAppBuild.GetDevServerStart"/> on its <see cref="ClientInfo.DevServerPort"/>, stopped
     ///   with the host) unless something already listens on this port, and forwards to it what the host doesn't handle under the
     ///   request path: the host stays the origin. A dev server that exits while the host runs is an error (its exit code and its
     ///   last output lines), that the running status reports (<see cref="ClientsDevRunningStatusContributor"/>).
     ///   </item>
     ///   <item>
-    ///   Otherwise, or when its "dist" is used (<see cref="ClientInfo.UseDist"/>, that the host's configuration overrides with
-    ///   "Clients:{Name}:UseDist" or "Clients:UseDist"), by its built files (<see cref="ClientInfo.ProjectPath"/>/<see cref="ClientInfo.OutputPath"/>,
+    ///   Otherwise, or when its "dist" is used (<see cref="HostingClientFeature.UseDist"/>, that the host's configuration overrides with
+    ///   "Clients:{Name}:UseDist" or "Clients:UseDist"), by its built files (<see cref="IWebAppBuild.ProjectPath"/>/<see cref="IWebAppBuild.OutputPath"/>,
     ///   relative to the content root) with a fallback to its "index.html" for its client routes, the caching and the security
-    ///   headers of its <see cref="TypeScriptClient.StaticFiles"/> option. A client application that is not built is skipped
+    ///   headers of its <see cref="HostingClientFeature.StaticFiles"/> option. A client application that is not built is skipped
     ///   with a warning.
     ///   </item>
     /// </list>
@@ -65,35 +65,38 @@ public static class ClientsApplicationExtensions
         var isDevelopment = app.Environment.IsDevelopment();
         // The running status of a development party (when the DevRunningStatus feature of CK.AppIdentity is here).
         var status = app.Services.GetService<ClientsDevRunningStatusContributor>();
-        // The client applications of the root party: the ones it declares ("Local:PartyClient:{Name}", the "PartyClient" feature).
-        // The ClientDirectory keeps the order of the build (the default client application last).
-        var declared = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<PartyClientFeature>()?.Clients
-                                   .OfType<TypeScriptClient>()
-                                   .ToDictionary( c => c.Name )
-                       ?? [];
-        foreach( var client in app.Services.GetRequiredService<ClientDirectory>().Clients )
+        // The clients of the root party that it serves ("Local:PartyClient:{Name}:Hosting", the "PartyClient" feature),
+        // the default client application ("/") last.
+        var hosted = app.Services.GetService<IApplicationIdentityService>()?.GetFeature<PartyClientFeature>()?.Clients
+                                 .Select( c => c.GetFeature<HostingClientFeature>() )
+                                 .OfType<HostingClientFeature>()
+                                 .OrderBy( h => h.RequestPath == "/" )
+                                 .ToList()
+                     ?? [];
+        foreach( var hosting in hosted )
         {
-            if( !declared.TryGetValue( client.Name, out var declaredClient ) ) continue;
+            var client = hosting.Info;
             // The default client application ("/") has an empty path prefix.
-            var requestPath = client.RequestPath.TrimEnd( '/' );
-            var projectPath = Path.Combine( app.Environment.ContentRootPath, client.ProjectPath );
-            if( isDevelopment && !UseDist( monitor, app.Configuration, client ) )
+            var requestPath = hosting.RequestPath.TrimEnd( '/' );
+            var projectPath = Path.Combine( app.Environment.ContentRootPath, hosting.Build.ProjectPath );
+            if( isDevelopment && !UseDist( monitor, app.Configuration, hosting ) )
             {
                 // Mapped first: the dev server can fail at once.
                 status?.OnMapped( client, useDist: false );
-                DevServer.EnsureRunning( monitor, app, client, projectPath, status );
+                DevServer.EnsureRunning( monitor, app, client, hosting.Build, projectPath, status );
                 app.MapForwarder( $"{requestPath}/{{**catch-all}}", $"http://localhost:{client.DevServerPort}" )
                    .Add( b => ((RouteEndpointBuilder)b).Order = int.MaxValue );
             }
-            else if( MapDist( monitor, app, client, declaredClient.StaticFiles, requestPath, Path.Combine( projectPath, client.OutputPath ) ) )
+            else if( MapDist( monitor, app, client, hosting.StaticFiles, requestPath, Path.Combine( projectPath, hosting.Build.OutputPath ) ) )
             {
                 status?.OnMapped( client, useDist: true );
             }
         }
     }
 
-    static bool UseDist( IStaticLogger monitor, IConfiguration configuration, ClientInfo client )
+    static bool UseDist( IStaticLogger monitor, IConfiguration configuration, HostingClientFeature hosting )
     {
+        var client = hosting.Info;
         var key = $"Clients:{client.Name}:UseDist";
         var value = configuration[key];
         if( value == null )
@@ -101,10 +104,10 @@ public static class ClientsApplicationExtensions
             key = "Clients:UseDist";
             value = configuration[key];
         }
-        if( value == null ) return client.UseDist;
+        if( value == null ) return hosting.UseDist;
         if( bool.TryParse( value, out var useDist ) ) return useDist;
-        monitor.Warn( $"Invalid '{key}' configuration '{value}' (expecting true or false): client application '{client}' uses its default (UseDist = {client.UseDist})." );
-        return client.UseDist;
+        monitor.Warn( $"Invalid '{key}' configuration '{value}' (expecting true or false): client application '{client}' uses its default (UseDist = {hosting.UseDist})." );
+        return hosting.UseDist;
     }
 
     static bool MapDist( IStaticLogger monitor, WebApplication app, ClientInfo client, StaticFilesOption? staticFiles, string requestPath, string output )
