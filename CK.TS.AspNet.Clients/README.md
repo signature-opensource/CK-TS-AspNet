@@ -34,7 +34,7 @@ of the build: a client whose `"Type"` is `"TypeScript"` configures the TypeScrip
 
 The [`TypeScriptClientFactory`](TypeScriptClientFactory.cs) creates the [`TypeScriptClient`](TypeScriptClient.cs) of a
 party that declares a client application of the `ClientDirectory` (its `Info` is its `ClientInfo`):
-- a client application requires the "HttpEndpoint" feature of its party (its endpoints serve it);
+- a client application requires the "HttpEndpoint" feature of its party (its endpoint serves it);
 - everything it is comes from the build: its declaration has no fact, only the options of `TypeScriptClient` and its
   compile time keys (its `Type` and the `TypeScriptBinPathAspectConfiguration.ClientConfigurationKeys`: they reach the run
   time only when the App keeps them in the projection, "App:ProjectCompileKeys"); any other key in
@@ -45,7 +45,7 @@ party that declares a client application of the `ClientDirectory` (its `Info` is
 
 The real object `ClientsHosting` contributes `ClientsApplicationExtensions.EnableClients` to the web applications of
 the host (`WebApplicationContributions`, the "Enable" convention of CK.AspNet: it is idempotent): the "HttpEndpoint"
-feature of CK.AppIdentity.HttpEndpoint applies it to each of its endpoints, so a party serves its client applications
+feature of CK.AppIdentity.HttpEndpoint applies it to its endpoint, so a party serves its client applications
 without calling anything. `EnableClients` appends `MapClients` to the pipeline; `ClientsHosting` also registers
 the HTTP forwarder (the host doesn't call `AddHttpForwarder()`).
 
