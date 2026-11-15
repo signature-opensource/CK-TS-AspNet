@@ -52,31 +52,7 @@ public sealed class HostingClientFeature : ClientFeature
     /// Gets how the built files are served. Null when its "StaticFiles" option is disabled (<c>"StaticFiles": false</c>):
     /// the files are served without cache and security headers.
     /// </summary>
-    public StaticFilesOption? StaticFiles => Options.OfType<StaticFilesOption>().SingleOrDefault();
-
-    /// <summary>
-    /// Initializes the options of the hosting: they are <see cref="HostingClientOption"/>.
-    /// </summary>
-    /// <param name="monitor">The monitor to use.</param>
-    /// <param name="options">The selected options and their configuration.</param>
-    /// <returns>True on success, false on error.</returns>
-    protected override bool InitializeOptions( IActivityMonitor monitor, IReadOnlyList<(object Option, ImmutableConfigurationSection? Configuration)> options )
-    {
-        bool success = true;
-        foreach( var (option, configuration) in options )
-        {
-            if( option is HostingClientOption o )
-            {
-                success &= o.Initialize( monitor, this, configuration );
-            }
-            else
-            {
-                monitor.Error( $"The option '{option.GetType().Name}' of {this} must be a {nameof( HostingClientOption )}." );
-                success = false;
-            }
-        }
-        return success;
-    }
+    public StaticFilesOption? StaticFiles => GetOption<StaticFilesOption>();
 
     /// <summary>
     /// Contributes the request path of the client to its description.

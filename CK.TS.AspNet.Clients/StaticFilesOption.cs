@@ -3,6 +3,7 @@ using CK.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using System;
 using System.Collections.Generic;
@@ -61,17 +62,20 @@ public sealed partial class StaticFilesOption : HostingClientOption
     static readonly string[] _keys = ["HashedFilePattern", "AssetsMaxAge", "ContentSecurityPolicy", "Headers", "ContentTypes",
                                       "ServeUnknownFileTypes", "DefaultContentType", "RedirectToAppendTrailingSlash"];
 
-    Regex _hashedFilePattern = DefaultHashedFilePattern();
-    string _assetsCacheControl = _noCache;
-    string? _contentSecurityPolicy = _defaultContentSecurityPolicy;
-    KeyValuePair<string, string>[] _headers = [];
+    readonly Regex _hashedFilePattern = DefaultHashedFilePattern();
+    readonly string _assetsCacheControl = _noCache;
+    readonly string? _contentSecurityPolicy = _defaultContentSecurityPolicy;
+    readonly KeyValuePair<string, string>[] _headers;
     readonly FileExtensionContentTypeProvider _contentTypes = new();
-    bool _serveUnknownFileTypes;
-    string? _defaultContentType;
-    bool _redirectToAppendTrailingSlash = true;
+    readonly bool _serveUnknownFileTypes;
+    readonly string? _defaultContentType;
+    readonly bool _redirectToAppendTrailingSlash = true;
 
-    /// <inheritdoc />
-    public override bool Initialize( IActivityMonitor monitor, HostingClientFeature hosting, ImmutableConfigurationSection? configuration )
+    /// <summary>
+    /// Initializes a new <see cref="StaticFilesOption"/> from its configuration. An invalid configuration throws.
+    /// </summary>
+    /// <param name="configuration">The "StaticFiles" section of the hosting. Null for the defaults.</param>
+    public StaticFilesOption( IConfiguration? configuration )
     {
         var headers = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase )
         {
@@ -80,15 +84,9 @@ public sealed partial class StaticFilesOption : HostingClientOption
         };
         if( configuration != null )
         {
-            var path = configuration.Path;
-            bool success = true;
             foreach( var c in configuration.GetChildren() )
             {
-                if( !_keys.Contains( c.Key ) )
-                {
-                    monitor.Error( $"Unknown \"{c.Path}\": the keys of \"{path}\" are {_keys.Concatenate()}." );
-                    success = false;
-                }
+                if( !_keys.Contains( c.Key ) ) Throw.CKException( $"Unknown \"{c.Key}\": the keys are {_keys.Concatenate()}." );
             }
             var pattern = configuration["HashedFilePattern"];
             if( pattern != null )
@@ -99,88 +97,58 @@ public sealed partial class StaticFilesOption : HostingClientOption
                 }
                 catch( ArgumentException ex )
                 {
-                    monitor.Error( $"Invalid \"{path}:HashedFilePattern\": '{pattern}' is not a regular expression.", ex );
-                    success = false;
+                    throw new CKException( $"Invalid \"HashedFilePattern\": '{pattern}' is not a regular expression.", ex );
                 }
             }
             var maxAge = configuration["AssetsMaxAge"];
             if( maxAge != null )
             {
-                if( TimeSpan.TryParse( maxAge, CultureInfo.InvariantCulture, out var m ) && m >= TimeSpan.Zero )
+                if( !TimeSpan.TryParse( maxAge, CultureInfo.InvariantCulture, out var m ) || m < TimeSpan.Zero )
                 {
-                    var seconds = (long)m.TotalSeconds;
-                    _assetsCacheControl = seconds == 0 ? _noCache : $"public, max-age={seconds}";
+                    Throw.CKException( $"Invalid \"AssetsMaxAge\": '{maxAge}' (a positive TimeSpan is expected, like \"01:00:00\")." );
                 }
-                else
-                {
-                    monitor.Error( $"Invalid \"{path}:AssetsMaxAge\": '{maxAge}' (a positive TimeSpan is expected, like \"01:00:00\")." );
-                    success = false;
-                }
+                var seconds = (long)m.TotalSeconds;
+                _assetsCacheControl = seconds == 0 ? _noCache : $"public, max-age={seconds}";
             }
             var csp = configuration["ContentSecurityPolicy"];
             if( csp != null ) _contentSecurityPolicy = csp.Length == 0 ? null : csp;
-            var configuredHeaders = configuration.TryGetSection( "Headers" );
-            if( configuredHeaders != null )
+            foreach( var h in configuration.GetSection( "Headers" ).GetChildren() )
             {
-                foreach( var h in configuredHeaders.GetChildren() )
+                if( h.Key.Equals( "Cache-Control", StringComparison.OrdinalIgnoreCase )
+                    || h.Key.Equals( "Content-Security-Policy", StringComparison.OrdinalIgnoreCase ) )
                 {
-                    if( h.Key.Equals( "Cache-Control", StringComparison.OrdinalIgnoreCase )
-                        || h.Key.Equals( "Content-Security-Policy", StringComparison.OrdinalIgnoreCase ) )
-                    {
-                        monitor.Error( $"Invalid \"{h.Path}\": the {h.Key} header is set by the option (use \"AssetsMaxAge\" or \"ContentSecurityPolicy\")." );
-                        success = false;
-                    }
-                    else if( h.Value == null )
-                    {
-                        monitor.Error( $"Invalid \"{h.Path}\": a header value is expected (empty to remove it)." );
-                        success = false;
-                    }
-                    else if( h.Value.Length == 0 ) headers.Remove( h.Key );
-                    else headers[h.Key] = h.Value;
+                    Throw.CKException( $"Invalid \"Headers:{h.Key}\": the {h.Key} header is set by the option (use \"AssetsMaxAge\" or \"ContentSecurityPolicy\")." );
                 }
+                if( h.Value == null ) Throw.CKException( $"Invalid \"Headers:{h.Key}\": a header value is expected (empty to remove it)." );
+                if( h.Value.Length == 0 ) headers.Remove( h.Key );
+                else headers[h.Key] = h.Value;
             }
-            var contentTypes = configuration.TryGetSection( "ContentTypes" );
-            if( contentTypes != null )
+            foreach( var t in configuration.GetSection( "ContentTypes" ).GetChildren() )
             {
-                foreach( var t in contentTypes.GetChildren() )
+                if( !t.Key.StartsWith( '.' ) || t.Value == null )
                 {
-                    if( !t.Key.StartsWith( '.' ) || t.Value == null )
-                    {
-                        monitor.Error( $"Invalid \"{t.Path}\": an extension (that starts with a dot) and its content type (empty to remove it) are expected." );
-                        success = false;
-                    }
-                    else if( t.Value.Length == 0 ) _contentTypes.Mappings.Remove( t.Key );
-                    else _contentTypes.Mappings[t.Key] = t.Value;
+                    Throw.CKException( $"Invalid \"ContentTypes:{t.Key}\": an extension (that starts with a dot) and its content type (empty to remove it) are expected." );
                 }
+                if( t.Value.Length == 0 ) _contentTypes.Mappings.Remove( t.Key );
+                else _contentTypes.Mappings[t.Key] = t.Value;
             }
-            success &= ReadBool( monitor, configuration, "ServeUnknownFileTypes", ref _serveUnknownFileTypes );
-            success &= ReadBool( monitor, configuration, "RedirectToAppendTrailingSlash", ref _redirectToAppendTrailingSlash );
+            _serveUnknownFileTypes = ReadBool( configuration, "ServeUnknownFileTypes", false );
+            _redirectToAppendTrailingSlash = ReadBool( configuration, "RedirectToAppendTrailingSlash", true );
             var defaultContentType = configuration["DefaultContentType"];
             if( defaultContentType != null )
             {
-                if( defaultContentType.Length > 0 ) _defaultContentType = defaultContentType;
-                else
-                {
-                    monitor.Error( $"Invalid \"{path}:DefaultContentType\": a content type is expected." );
-                    success = false;
-                }
+                if( defaultContentType.Length == 0 ) Throw.CKException( "Invalid \"DefaultContentType\": a content type is expected." );
+                _defaultContentType = defaultContentType;
             }
-            if( !success ) return false;
         }
         _headers = headers.ToArray();
-        return true;
 
-        static bool ReadBool( IActivityMonitor monitor, ImmutableConfigurationSection c, string key, ref bool value )
+        static bool ReadBool( IConfiguration c, string key, bool defaultValue )
         {
             var v = c[key];
-            if( v == null ) return true;
-            if( bool.TryParse( v, out var b ) )
-            {
-                value = b;
-                return true;
-            }
-            monitor.Error( $"Invalid \"{c.Path}:{key}\": '{v}' (true or false is expected)." );
-            return false;
+            if( v == null ) return defaultValue;
+            if( !bool.TryParse( v, out var b ) ) Throw.CKException( $"Invalid \"{key}\": '{v}' (true or false is expected)." );
+            return b;
         }
     }
 
