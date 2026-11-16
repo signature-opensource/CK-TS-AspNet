@@ -26,6 +26,7 @@ public class MapClientsTests
     /// <summary>
     /// A web build ("TestBuild") that stands for "NgApp" (CK.TS.Angular): the client application of the ClientDirectory.
     /// </summary>
+    [PartyClientFeature( "TestBuild", TypeActivation.Optional )]
     public sealed class TestBuildClientFeature : ClientFeature, IWebAppBuild
     {
         public TestBuildClientFeature( PartyClient client, ImmutableConfigurationSection configuration, ClientInfo info )

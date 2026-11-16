@@ -17,6 +17,7 @@ namespace CK.TypeScript;
 /// </para>
 /// </summary>
 [Requires<HttpEndpointFeatureDriver, IWebAppBuild>]
+[PartyClientFeature( "Hosting", TypeActivation.Optional )]
 public sealed class HostingClientFeature : ClientFeature
 {
     internal HostingClientFeature( PartyClient client, ImmutableConfigurationSection configuration, ClientInfo info, IWebAppBuild build, bool useDist )

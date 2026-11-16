@@ -49,7 +49,7 @@ namespace CK.TypeScript;
 /// }
 /// </code>
 /// </summary>
-[PartyClientOption( IsEnabledByDefault = true )]
+[PartyClientFeatureOption( "StaticFiles", TypeActivation.ByDefault )]
 public sealed partial class StaticFilesOption : HostingClientOption
 {
     const string _noCache = "no-cache";
