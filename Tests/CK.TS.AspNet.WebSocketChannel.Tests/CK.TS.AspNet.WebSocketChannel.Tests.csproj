@@ -4,14 +4,14 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Testing.Engine" Version="37.0.0-0.uc.0.ci.19" />
+    <PackageReference Include="CK.Testing.Engine" Version="37.0.0-0.uc.0.ci.21" />
     <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.uc" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="6.3.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.TS.AspNet.WebSocketChannel\CK.TS.AspNet.WebSocketChannel.csproj" />
-    <PackageReference Include="CK.Testing.Engine.TypeScript" Version="4.0.0-0.uc.0.ci.17" />
+    <PackageReference Include="CK.Testing.Engine.TypeScript" Version="4.0.0-0.uc.0.ci.18" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="TSInlineTests\" />
