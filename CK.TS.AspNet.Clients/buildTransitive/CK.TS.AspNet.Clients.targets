@@ -20,7 +20,8 @@
            Text="CK.TS.AspNet.Clients: no yarn found for the client application '%(_CKClientApplication.Name)' (.yarn/releases/yarn*.cjs in or above its folder '%(_CKClientApplication.Identity)')." />
     <Message Importance="high" Text="Building the client application '%(_CKClientApplication.Name)' (yarn build in '%(_CKClientApplication.Identity)')." />
     <!-- The exit code decides: the output of a client build may have lines that look like MSBuild errors. -->
-    <Exec Command="node &quot;$(MSBuildProjectDirectory)/%(_CKClientApplication.Yarn)&quot; build"
+    <!-- The yarn is relative to the host when it is under it, absolute otherwise (the one of the repository). -->
+    <Exec Command="node &quot;$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '%(_CKClientApplication.Yarn)'))&quot; build"
           WorkingDirectory="$(MSBuildProjectDirectory)/%(_CKClientApplication.Identity)"
           IgnoreStandardErrorWarningFormat="true" />
     <ItemGroup>
