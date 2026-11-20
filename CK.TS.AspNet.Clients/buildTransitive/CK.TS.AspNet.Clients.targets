@@ -3,7 +3,7 @@
   <!--
     The publication of the client applications of a host (see the README of CK.TS.AspNet.Clients): the build of the host
     runs its builder, whose TypeScript engine writes "$StObjGen/Clients.props" (one CKClientApplication item per client
-    application: its folder relative to the host, its built output, its yarn). On "dotnet publish" only, each client
+    application: its folder relative to the host, its built output, its yarn: an absolute path). On "dotnet publish" only, each client
     application is built in production mode (its yarn "build" script) and its output is published at the same relative
     path ("Clients/App/dist/App/browser"): where the host serves it (MapClients). The build of the host doesn't change.
     CKClientsPublish set to false opts out.
@@ -20,8 +20,7 @@
            Text="CK.TS.AspNet.Clients: no yarn found for the client application '%(_CKClientApplication.Name)' (.yarn/releases/yarn*.cjs in or above its folder '%(_CKClientApplication.Identity)')." />
     <Message Importance="high" Text="Building the client application '%(_CKClientApplication.Name)' (yarn build in '%(_CKClientApplication.Identity)')." />
     <!-- The exit code decides: the output of a client build may have lines that look like MSBuild errors. -->
-    <!-- The yarn is relative to the host when it is under it, absolute otherwise (the one of the repository). -->
-    <Exec Command="node &quot;$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '%(_CKClientApplication.Yarn)'))&quot; build"
+    <Exec Command="node &quot;%(_CKClientApplication.Yarn)&quot; build"
           WorkingDirectory="$(MSBuildProjectDirectory)/%(_CKClientApplication.Identity)"
           IgnoreStandardErrorWarningFormat="true" />
     <ItemGroup>
