@@ -60,6 +60,16 @@ its default (a client application nobody develops in this host), the host's conf
 `Clients:UseDist=true` for all the client applications (a UI test, a backend-only debugging session),
 `Clients:{Name}:UseDist=true|false` for one of them (`dotnet run -- --Clients:MiniApp:UseDist=false`).
 
+## The publication builds them
+
+The development build of the host doesn't build the client applications (their dev servers compile them, or a
+`yarn build` by hand). **`dotnet publish` of the host does:** the builder of the host writes `$StObjGen/Clients.props`
+(the TypeScript engine: each client application, its folder, its built output, its yarn), and a target of this package
+(its `buildTransitive` targets: they reach the host through its `.App` project) runs the yarn `build` script of each
+client application (`ng build`: the production configuration of an Angular application) and publishes its output at
+the same relative path (`Clients/App/dist/App/browser`): the published host serves it. `CKClientsPublish=false` opts
+out. `node` must be on the path of the publication.
+
 ## The built files: the `StaticFiles` option
 
 The built files are served as a production server serves them, by the [`StaticFilesOption`](StaticFilesOption.cs) of

@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    The publication of the client applications of a host (see the README of CK.TS.AspNet.Clients): the build of the host
+    runs its builder, whose TypeScript engine writes "$StObjGen/Clients.props" (one CKClientApplication item per client
+    application: its folder relative to the host, its built output, its yarn). On "dotnet publish" only, each client
+    application is built in production mode (its yarn "build" script) and its output is published at the same relative
+    path ("Clients/App/dist/App/browser"): where the host serves it (MapClients). The build of the host doesn't change.
+    CKClientsPublish set to false opts out.
+    The file is read when the target runs (the MSBuild task on its CKGetClientApplications target): the builder writes it
+    during the build, after the evaluation of the host project.
+  -->
+  <Target Name="CKClientsPublish"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition=" '$(CKClientsPublish)' != 'false' And Exists('$(MSBuildProjectDirectory)/$StObjGen/Clients.props') ">
+    <MSBuild Projects="$(MSBuildProjectDirectory)/$StObjGen/Clients.props" Targets="CKGetClientApplications">
+      <Output TaskParameter="TargetOutputs" ItemName="_CKClientApplication" />
+    </MSBuild>
+    <Error Condition=" '%(_CKClientApplication.Yarn)' == '' "
+           Text="CK.TS.AspNet.Clients: no yarn found for the client application '%(_CKClientApplication.Name)' (.yarn/releases/yarn*.cjs in or above its folder '%(_CKClientApplication.Identity)')." />
+    <Message Importance="high" Text="Building the client application '%(_CKClientApplication.Name)' (yarn build in '%(_CKClientApplication.Identity)')." />
+    <!-- The exit code decides: the output of a client build may have lines that look like MSBuild errors. -->
+    <Exec Command="node &quot;$(MSBuildProjectDirectory)/%(_CKClientApplication.Yarn)&quot; build"
+          WorkingDirectory="$(MSBuildProjectDirectory)/%(_CKClientApplication.Identity)"
+          IgnoreStandardErrorWarningFormat="true" />
+    <ItemGroup>
+      <_CKClientFile Include="$(MSBuildProjectDirectory)/%(_CKClientApplication.Identity)/%(_CKClientApplication.OutputPath)/**/*"
+                     ClientOutput="%(_CKClientApplication.Identity)/%(_CKClientApplication.OutputPath)" />
+      <ResolvedFileToPublish Include="@(_CKClientFile)"
+                             RelativePath="%(_CKClientFile.ClientOutput)/%(_CKClientFile.RecursiveDir)%(_CKClientFile.Filename)%(_CKClientFile.Extension)"
+                             CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+    <Error Condition=" '@(_CKClientFile)' == '' " Text="CK.TS.AspNet.Clients: the build of the client applications produced no file." />
+  </Target>
+
+</Project>

@@ -7,6 +7,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The publication of the client applications of a host (it reaches the host through its ".App" project). -->
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The dev server of a client application is reached through the host by YARP direct forwarding. -->
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
