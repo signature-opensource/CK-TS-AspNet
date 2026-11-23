@@ -12,6 +12,11 @@ namespace CK.TypeScript;
 /// <summary>
 /// Starts the dev server of a client application (its <see cref="IWebAppBuild.GetDevServerStart"/> through its yarn) and stops it with the host.
 /// A dev server that exits while the host runs is an error: its exit code and its last output lines.
+/// <para>
+/// On Windows, the dev server is in a <see cref="KillOnCloseJob"/>: its processes (yarn starts "ng serve" through an
+/// intermediate process that exits, so a process tree kill misses it) are killed when the host stops, even abruptly.
+/// Elsewhere, its process tree is killed when the host stops.
+/// </para>
 /// </summary>
 static class DevServer
 {
@@ -48,6 +53,19 @@ static class DevServer
         {
             monitor.Warn( $"Unable to start the dev server of the client application '{client}'." );
             return;
+        }
+        // On Windows, the dev server and everything it starts are in a job that is killed with the host (see KillOnCloseJob).
+        KillOnCloseJob? job = null;
+        if( OperatingSystem.IsWindows() )
+        {
+            try
+            {
+                job = KillOnCloseJob.Assign( process );
+            }
+            catch( Exception ex )
+            {
+                monitor.Warn( $"Unable to assign the dev server of the client application '{client}' to a job: its processes may outlive the host.", ex );
+            }
         }
         var lastLines = new Queue<string>( LastLinesCount );
         bool stopping = false;
@@ -99,7 +117,9 @@ static class DevServer
                 }
                 else
                 {
-                    process.Kill( entireProcessTree: true );
+                    // Closing the job kills all its processes, the orphaned ones included.
+                    if( job != null ) job.Dispose();
+                    else process.Kill( entireProcessTree: true );
                     if( process.WaitForExit( 5000 ) )
                     {
                         monitor.Info( $"Stopped the dev server of the client application '{client}' (port {port})." );
@@ -114,6 +134,8 @@ static class DevServer
             {
                 monitor.Warn( $"While stopping the dev server of the client application '{client}'.", ex );
             }
+            // An exited dev server may have left processes in its job.
+            job?.Dispose();
             process.Dispose();
         } );
         monitor.Info( $"Started the dev server of the client application '{client}' on port {port} (it compiles before it answers)." );
