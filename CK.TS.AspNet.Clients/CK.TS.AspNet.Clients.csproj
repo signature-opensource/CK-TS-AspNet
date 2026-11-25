@@ -13,12 +13,12 @@
     <!-- The dev server of a client application is reached through the host by YARP direct forwarding. -->
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- The "Enable" convention and the contributions of the packages (WebApplicationContributions). -->
-    <PackageReference Include="CK.AspNet" Version="25.0.0-0.uc.3.ci.79" />
+    <PackageReference Include="CK.AspNet" Version="25.0.0-0.uc.4" />
     <!-- The client applications are clients of a party ("PartyClient" feature); they require its "HttpEndpoint" feature. -->
-    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.uc.3.ci.188" />
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.3.ci.79" />
+    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.uc.4" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.4" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeScript" Version="4.0.0-0.uc.3.ci.67" />
+    <PackageReference Include="CK.TypeScript" Version="4.0.0-0.uc.4" />
   </ItemGroup>
 </Project>
