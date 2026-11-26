@@ -65,7 +65,7 @@ public sealed class HostingClientFeature : ClientFeature
 /// The configuration model of the "Hosting" client feature (its options are next to its keys).
 /// </summary>
 [ConfigurationModel]
-public sealed class HostingConfiguration : IConfigurationModel
+public sealed class HostingConfiguration
 {
     /// <summary>
     /// Gets whether the party serves the built files of the client even in Development (false by default). The host's
