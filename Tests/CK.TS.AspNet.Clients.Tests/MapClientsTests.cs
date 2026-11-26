@@ -27,6 +27,7 @@ public class MapClientsTests
     /// A web build ("TestBuild") that stands for "NgApp" (CK.TS.Angular): the client application of the ClientDirectory.
     /// </summary>
     [PartyClientFeature( "TestBuild", TypeActivation.Optional )]
+    [CompileConfiguration<CK.Setup.TypeScriptClientCompileConfiguration>]
     public sealed class TestBuildClientFeature : ClientFeature, IWebAppBuild
     {
         public TestBuildClientFeature( PartyClient client, ImmutableConfigurationSection configuration, ClientInfo info )
@@ -206,14 +207,14 @@ public class MapClientsTests
     public async Task the_compile_time_keys_of_a_client_are_accepted_Async()
     {
         // When the App keeps them in the projection ("ProjectCompileKeys" in "ckonf.json"): its type set and the compile
-        // time keys of "Hosting".
+        // time keys of its web build (the request path and the dev server port are the web build's, not "Hosting"'s).
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
         await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
         {
             c["Local:PartyClient:App:Types:0"] = "Some.Type, Some.Assembly";
-            c["Local:PartyClient:App:TestBuild"] = "true";
-            c["Local:PartyClient:App:Hosting:RequestPath"] = "/";
-            c["Local:PartyClient:App:Hosting:DevServerPort"] = "4200";
+            c["Local:PartyClient:App:TestBuild:RequestPath"] = "/";
+            c["Local:PartyClient:App:TestBuild:DevServerPort"] = "4200";
+            c["Local:PartyClient:App:Hosting"] = "true";
         }, configureHost: b => b.Environment.EnvironmentName = "Production" );
         (await GetAsync( server, "/" )).ShouldBe( "THE-APP" );
     }

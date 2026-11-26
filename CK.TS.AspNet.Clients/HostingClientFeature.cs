@@ -1,7 +1,5 @@
 using CK.AppIdentity;
 using CK.Core;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace CK.TypeScript;
@@ -11,13 +9,14 @@ namespace CK.TypeScript;
 /// feature of the party (see <see cref="ClientsApplicationExtensions.MapClients"/>). It requires the web build of the
 /// client (<see cref="IWebAppBuild"/>: "NgApp" for an Angular application) for its built files and its dev server.
 /// <para>
-/// Its "RequestPath" and "DevServerPort" are compile time keys (the build writes them in the client's project): they come
-/// from the build (<see cref="Info"/>). Its run time keys are "UseDist" and its options (<see cref="HostingClientOption"/>:
-/// "StaticFiles").
+/// Its keys are its model (<see cref="HostingConfiguration"/>: "UseDist") and its options (<see cref="HostingClientOption"/>:
+/// "StaticFiles"). The request path and the dev server port of the client are the web build's (the compile time model of
+/// "NgApp"): they come from the build (<see cref="Info"/>).
 /// </para>
 /// </summary>
 [Requires<HttpEndpointFeatureDriver, IWebAppBuild>]
 [PartyClientFeature( "Hosting", TypeActivation.Optional )]
+[Configuration<HostingConfiguration>]
 public sealed class HostingClientFeature : ClientFeature
 {
     internal HostingClientFeature( PartyClient client, ImmutableConfigurationSection configuration, ClientInfo info, IWebAppBuild build, bool useDist )
@@ -63,28 +62,36 @@ public sealed class HostingClientFeature : ClientFeature
 }
 
 /// <summary>
+/// The configuration model of the "Hosting" client feature (its options are next to its keys).
+/// </summary>
+[ConfigurationModel]
+public sealed class HostingConfiguration : IConfigurationModel
+{
+    /// <summary>
+    /// Gets whether the party serves the built files of the client even in Development (false by default). The host's
+    /// configuration overrides it for a run: "Clients:{Name}:UseDist", "Clients:UseDist".
+    /// </summary>
+    public bool UseDist { get; init; }
+}
+
+/// <summary>
 /// Creates the "Hosting" feature of the clients that declare it: the client applications of the <see cref="ClientDirectory"/>.
 /// </summary>
-public sealed class HostingClientFeatureDriver : ClientFeatureDriver<HostingClientFeature>
+public sealed class HostingClientFeatureDriver : ClientFeatureDriver<HostingClientFeature, HostingConfiguration>
 {
-    static readonly HashSet<string> _compileKeys = new( StringComparer.OrdinalIgnoreCase ) { "RequestPath", "DevServerPort" };
-
     readonly ClientDirectory _directory;
-    readonly PartyComponentOptionDirectory _options;
 
     /// <summary>
     /// Initializes a new driver.
     /// </summary>
     /// <param name="directory">The client applications built by the application.</param>
-    /// <param name="options">The options of the party components: the option keys of the section are not its own.</param>
-    public HostingClientFeatureDriver( ClientDirectory directory, PartyComponentOptionDirectory options )
+    public HostingClientFeatureDriver( ClientDirectory directory )
     {
         _directory = directory;
-        _options = options;
     }
 
     /// <inheritdoc />
-    protected override HostingClientFeature? Create( IActivityMonitor monitor, PartyClient client, ImmutableConfigurationSection configuration )
+    protected override HostingClientFeature? Create( IActivityMonitor monitor, PartyClient client, ImmutableConfigurationSection configuration, HostingConfiguration model )
     {
         var info = _directory.Clients.FirstOrDefault( c => c.Name == client.Name );
         if( info == null )
@@ -95,25 +102,6 @@ public sealed class HostingClientFeatureDriver : ClientFeatureDriver<HostingClie
         // The requirements are checked: the web build is here.
         var build = client.GetFeature<IWebAppBuild>();
         Throw.CheckState( build != null );
-        bool success = true;
-        bool useDist = false;
-        foreach( var k in configuration.GetChildren() )
-        {
-            if( k.Key.Equals( "UseDist", StringComparison.OrdinalIgnoreCase ) )
-            {
-                if( !bool.TryParse( k.Value, out useDist ) )
-                {
-                    monitor.Error( $"Invalid \"{k.Path}\": '{k.Value}' (true or false is expected)." );
-                    success = false;
-                }
-            }
-            // The compile time keys are here only when the App keeps them ("ProjectCompileKeys").
-            else if( !_compileKeys.Contains( k.Key ) && !_options.IsOptionName( typeof( HostingClientFeature ), k.Key ) )
-            {
-                monitor.Error( $"Unknown \"{k.Path}\": the keys of \"Hosting\" are UseDist, its options and its compile time keys (RequestPath, DevServerPort)." );
-                success = false;
-            }
-        }
-        return success ? new HostingClientFeature( client, configuration, info, build, useDist ) : null;
+        return new HostingClientFeature( client, configuration, info, build, model.UseDist );
     }
 }
