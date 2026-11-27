@@ -210,19 +210,21 @@ public class MapClientsTests
     }
 
     [Test]
-    public async Task the_compile_time_keys_of_a_client_are_accepted_Async()
+    public async Task a_compile_time_key_of_a_client_is_unknown_at_run_time_Async()
     {
-        // When the App keeps them in the projection ("ProjectCompileKeys" in "ckonf.json"): its type set and the compile
-        // time keys of its web build (the request path and the dev server port are the web build's, not "Hosting"'s).
+        // The request path and the dev server port are the web build's (its compile time model): the host's
+        // "appsettings.json" never has them (they are described in its "architecture.md"). In a run time configuration,
+        // they are unknown keys: an error in strict mode.
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
-        await using var server = await map.CreateRunningAspNetServerAsync( identity: c =>
+        using var logs = CK.Monitoring.GrandOutput.Default!.CreateMemoryCollector( 5000 );
+        await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c =>
         {
-            c["Local:PartyClient:App:Types:0"] = "Some.Type, Some.Assembly";
-            c["Local:PartyClient:App:TestBuild:RequestPath"] = "/";
+            c["StrictConfigurationMode"] = "true";
+            c["StoreRootPath"] = Path.Combine( Path.GetTempPath(), "CK-TS-AspNet-Clients-Tests-Strict" );
             c["Local:PartyClient:App:TestBuild:DevServerPort"] = "4200";
             c["Local:PartyClient:App:Hosting"] = "true";
-        }, configureHost: b => b.Environment.EnvironmentName = "Production" );
-        (await GetAsync( server, "/" )).ShouldBe( "THE-APP" );
+        } ) );
+        logs.ExtractCurrentTexts().ShouldContain( t => t.Contains( "Unknown key" ) && t.Contains( "Local:PartyClient:App:TestBuild:DevServerPort" ) );
     }
 
     [Test]
