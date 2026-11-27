@@ -17,8 +17,8 @@ a client is a bag of client features. A client application served by its party h
 
 ```jsonc
 "Local": { "PartyClient": {
-  "App":     { "NgApp": true, "Hosting": { "RequestPath": "/", "DevServerPort": 4200 } },
-  "MiniApp": { "NgApp": true, "Hosting": { "DevServerPort": 4201, "UseDist": true, "StaticFiles": { "AssetsMaxAge": "01:00:00" } } } } }
+  "App":     { "NgApp": { "RequestPath": "/", "DevServerPort": 4200 }, "Hosting": true },
+  "MiniApp": { "NgApp": { "DevServerPort": 4201 }, "Hosting": { "UseDist": true, "StaticFiles": { "AssetsMaxAge": "01:00:00" } } } } }
 ```
 
 The "Hosting" feature requires the "HttpEndpoint" feature of its party (its endpoint serves the client) and the web
@@ -26,11 +26,12 @@ build of the client (`[Requires<HttpEndpointFeatureDriver, IWebAppBuild>]`). Its
 [`HostingClientFeatureDriver`](HostingClientFeature.cs) creates it for a client application of the `ClientDirectory`
 (see [CK.TypeScript](https://github.com/signature-opensource/CK-TypeScript/blob/stable/CK.TypeScript/README.md#client-applications)):
 
-- **its compile time keys** come from the build (`HostingClientFeature.Info`, a `ClientInfo`): its `RequestPath` (optional:
-  `/{kebab-name}` by default, `/` for the default client application: `/mini-app` for the MiniApp) and its
-  `DevServerPort`. The Angular engine writes them in the `angular.json`. They reach the run time only when the App keeps
-  them in the projection ("ProjectCompileKeys" in the builder's `ckonf.json`), and are then accepted;
-- **its run time keys** are `UseDist` and its options (the `StaticFiles` option, below); any other key is an error;
+- **its request path and its dev server port** are the web build's (the compile time model of "NgApp",
+  `TypeScriptClientCompileConfiguration` of CK.TypeScript): they come from the build (`HostingClientFeature.Info`, a
+  `ClientInfo`). The `RequestPath` is optional: `/{kebab-name}` by default, `/` for the default client application
+  (`/mini-app` for the MiniApp);
+- **its keys** are its model, `HostingConfiguration` (`UseDist`), and its options (the `StaticFiles` option, below); any
+  other key is an error;
 - it gives the request path of the client in the description of its party;
 - a client application that the party doesn't declare is neither served nor announced.
 
