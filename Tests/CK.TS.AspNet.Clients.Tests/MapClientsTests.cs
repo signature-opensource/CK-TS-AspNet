@@ -189,11 +189,17 @@ public class MapClientsTests
     public async Task a_key_that_Hosting_doesnt_have_is_an_error_Async()
     {
         var map = await CreateMapAsync( TestHelper.CleanupFolder( TestHelper.GetTypeScriptGeneratedOnlyTargetProjectPath(), false ), 4200, 4201 );
+        using var logs = CK.Monitoring.GrandOutput.Default!.CreateMemoryCollector( 5000 );
         await Should.ThrowAsync<Exception>( () => map.CreateRunningAspNetServerAsync( identity: c =>
         {
+            // Strict mode: a configuration problem fails the start (in the "#Dev" environment, it is a warning), with a
+            // store that only the current user can write.
+            c["StrictConfigurationMode"] = "true";
+            c["StoreRootPath"] = Path.Combine( Path.GetTempPath(), "CK-TS-AspNet-Clients-Tests-Strict" );
             c["Local:PartyClient:App:TestBuild"] = "true";
             c["Local:PartyClient:App:Hosting:Color"] = "Blue";
         } ) );
+        logs.ExtractCurrentTexts().ShouldContain( t => t.Contains( "Local:PartyClient:App:Hosting:Color" ) );
     }
 
     [Test]
